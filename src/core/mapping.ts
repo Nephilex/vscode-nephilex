@@ -1,10 +1,10 @@
 /**
- * Pure mapping from Argus findings to editor concepts (severity levels,
+ * Pure mapping from Nephilex findings to editor concepts (severity levels,
  * diagnostic messages, ranges, file paths). Kept free of the `vscode` module
  * so it can be unit tested in plain Node.
  */
 import * as path from 'node:path';
-import { ArgusFinding, ArgusLocation, SeverityLevel, SeverityName, SEVERITY_NAMES } from './report';
+import { NephilexFinding, NephilexLocation, SeverityLevel, SeverityName, SEVERITY_NAMES } from './report';
 
 export type DiagnosticLevel = 'error' | 'warning' | 'information';
 
@@ -23,7 +23,7 @@ export function severityAtLeast(severity: SeverityLevel, min: SeverityName): boo
   return severity >= SEVERITY_NAMES.indexOf(min);
 }
 
-export function isCriticalOrHigh(f: ArgusFinding): boolean {
+export function isCriticalOrHigh(f: NephilexFinding): boolean {
   return f.severity >= 3;
 }
 
@@ -36,7 +36,7 @@ function oneLine(s: string): string {
  * Diagnostic message: the title followed by the CWE and OWASP mappings, e.g.
  * `Unsafe yaml.load without SafeLoader (CWE-502; OWASP A08:2021-Software ...)`.
  */
-export function diagnosticMessage(f: ArgusFinding): string {
+export function diagnosticMessage(f: NephilexFinding): string {
   const parts: string[] = [];
   if (f.cwe.length) {
     parts.push(f.cwe.map(oneLine).join(', '));
@@ -48,7 +48,7 @@ export function diagnosticMessage(f: ArgusFinding): string {
   return parts.length ? `${title} (${parts.join('; ')})` : title;
 }
 
-export const DEFAULT_DOCS_URL = 'https://argus-codesecurity.github.io/Argus-appsec/scanners/';
+export const DEFAULT_DOCS_URL = 'https://nephilex.github.io/nephilex/scanners/';
 
 /** Returns the URL only when it is a well-formed https URL; never other schemes. */
 export function safeHttpsUrl(url: string | undefined): string | undefined {
@@ -63,7 +63,7 @@ export function safeHttpsUrl(url: string | undefined): string | undefined {
   }
 }
 
-export function docsUrl(f: ArgusFinding): string {
+export function docsUrl(f: NephilexFinding): string {
   return safeHttpsUrl(f.docsUrl) ?? DEFAULT_DOCS_URL;
 }
 
@@ -91,12 +91,12 @@ function trimmedEnd(text: string): number {
 }
 
 /**
- * Compute the editor range for a finding location. Argus lines and columns are
+ * Compute the editor range for a finding location. Nephilex lines and columns are
  * 1-based; a missing line means a file-level finding (mapped to line 1). With
  * no columns, the range covers the line without its leading and trailing
  * whitespace. Out-of-range values are clamped to the document.
  */
-export function computeRange(loc: ArgusLocation, doc: LineSource): ZeroRange {
+export function computeRange(loc: NephilexLocation, doc: LineSource): ZeroRange {
   const last = Math.max(doc.lineCount - 1, 0);
   const startLine = Math.min(Math.max((loc.startLine ?? 1) - 1, 0), last);
   let endLine = loc.endLine !== undefined ? Math.min(Math.max(loc.endLine - 1, startLine), last) : startLine;
@@ -119,7 +119,7 @@ export function computeRange(loc: ArgusLocation, doc: LineSource): ZeroRange {
 }
 
 /**
- * Resolve a finding path to an absolute file system path. Argus reports paths
+ * Resolve a finding path to an absolute file system path. Nephilex reports paths
  * relative to the scan root (`report.target`; for a file target, the CLI uses
  * the file's directory). Absolute paths are kept as is.
  */

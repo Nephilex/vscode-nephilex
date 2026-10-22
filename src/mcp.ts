@@ -1,5 +1,5 @@
 /**
- * Registers `argus mcp` as an MCP server for agent mode.
+ * Registers `nephilex mcp` as an MCP server for agent mode.
  *
  * API verified against the official docs:
  *   https://code.visualstudio.com/api/extension-guides/ai/mcp
@@ -13,7 +13,7 @@
  */
 import * as path from 'node:path';
 import * as vscode from 'vscode';
-import { ArgusCli } from './argusCli';
+import { NephilexCli } from './nephilexCli';
 import { MCP_PROVIDER_ID } from './constants';
 import { readSettings } from './settings';
 
@@ -63,7 +63,7 @@ export function isMcpApiAvailable(api: unknown = vscode): boolean {
  * the editor has no MCP server definition API.
  */
 export function registerMcpProvider(
-  cli: ArgusCli,
+  cli: NephilexCli,
   log: vscode.LogOutputChannel,
 ): { disposable: vscode.Disposable; refresh: () => void } | undefined {
   const api = vscode as unknown as McpApi;
@@ -71,7 +71,7 @@ export function registerMcpProvider(
   const Ctor = api.McpStdioServerDefinition;
   if (typeof register !== 'function' || typeof Ctor !== 'function') {
     log.info(
-      'This editor has no MCP server definition API; configure .vscode/mcp.json by hand to use the Argus MCP server.',
+      'This editor has no MCP server definition API; configure .vscode/mcp.json by hand to use the Nephilex MCP server.',
     );
     return undefined;
   }
@@ -89,18 +89,18 @@ export function registerMcpProvider(
       }
       const prep = await cli.prepare(settings);
       if (!prep.ok) {
-        log.warn(`Argus MCP server not registered: ${prep.message}`);
+        log.warn(`Nephilex MCP server not registered: ${prep.message}`);
         return [];
       }
       const env: Record<string, string> = {
-        // The server only scans inside these roots (see argus/mcp/server.py).
-        ARGUS_MCP_ROOTS: folders.map((f) => f.uri.fsPath).join(path.delimiter),
+        // The server only scans inside these roots (see nephilex/mcp/server.py).
+        NEPHILEX_MCP_ROOTS: folders.map((f) => f.uri.fsPath).join(path.delimiter),
         NO_COLOR: '1',
         PYTHONIOENCODING: 'utf-8',
         PYTHONSAFEPATH: '1',
       };
       const def = new Ctor(
-        'Argus Security',
+        'nephilex',
         prep.cli.resolved.command,
         [...prep.cli.prefix, 'mcp'],
         env,
@@ -112,7 +112,7 @@ export function registerMcpProvider(
     resolveMcpServerDefinition: (server) => (vscode.workspace.isTrusted ? server : undefined),
   };
   const registration = register.call(api.lm, MCP_PROVIDER_ID, provider);
-  log.info('Registered the Argus MCP server definition provider.');
+  log.info('Registered the Nephilex MCP server definition provider.');
   return {
     disposable: vscode.Disposable.from(registration, changed),
     refresh: () => changed.fire(),

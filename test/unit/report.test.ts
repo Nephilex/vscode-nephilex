@@ -8,7 +8,7 @@ const fixture = path.join(__dirname, '..', '..', '..', 'test', 'fixtures', 'repo
 describe('report parsing', () => {
   it('parses a real scan report', () => {
     const report = parseReport(fs.readFileSync(fixture, 'utf8'));
-    assert.equal(report.argusVersion, '0.9.2');
+    assert.equal(report.nephilexVersion, '0.9.2');
     assert.equal(report.findings.length, 5);
     assert.equal(report.skipped, 0);
     const yaml = report.findings.find((f) => f.ruleId === 'patterns.python-yaml-load');

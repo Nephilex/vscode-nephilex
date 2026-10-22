@@ -4,7 +4,7 @@ import { SEVERITY_NAMES, SeverityName } from './core/report';
 
 export type RunMode = 'off' | 'onSave' | 'onType';
 
-export interface ArgusSettings {
+export interface NephilexSettings {
   run: RunMode;
   debounceMs: number;
   executablePath: string;
@@ -32,7 +32,7 @@ function strings(v: unknown): string[] {
  * `capabilities.untrustedWorkspaces.restrictedConfigurations`, so in Restricted
  * Mode the editor only returns their user-level values.
  */
-export function readSettings(): ArgusSettings {
+export function readSettings(): NephilexSettings {
   const c = vscode.workspace.getConfiguration(CONFIG_SECTION);
   const run = c.get<string>('run', 'onSave');
   const minSeverity = c.get<string>('minSeverity', 'low');

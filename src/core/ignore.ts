@@ -1,10 +1,10 @@
 /**
  * Inline suppression comments. The CLI honours, on the finding's own line:
  *
- *   code  # argus-ignore: <rule-id> reason="<why>"
- *   code  // argus-ignore: <rule-id> reason="<why>"
+ *   code  # nephilex-ignore: <rule-id> reason="<why>"
+ *   code  // nephilex-ignore: <rule-id> reason="<why>"
  *
- * (see `_INLINE_IGNORE` in argus/core/engine.py). The reason is required and
+ * (see `_INLINE_IGNORE` in nephilex/core/engine.py). The reason is required and
  * cannot contain quotes, so it is validated before insertion.
  */
 
@@ -110,21 +110,21 @@ export function validateReason(reason: string): string | undefined {
 /** The text appended to the end of the finding's line. */
 export function buildIgnoreSuffix(style: CommentStyle, ruleId: string, reason: string): string {
   if (!RULE_ID_PATTERN.test(ruleId)) {
-    throw new Error(`Rule id "${ruleId}" cannot be used in an argus-ignore comment.`);
+    throw new Error(`Rule id "${ruleId}" cannot be used in a nephilex-ignore comment.`);
   }
   const err = validateReason(reason);
   if (err) {
     throw new Error(err);
   }
-  return `  ${style} argus-ignore: ${ruleId} reason="${reason.trim()}"`;
+  return `  ${style} nephilex-ignore: ${ruleId} reason="${reason.trim()}"`;
 }
 
 export function lineHasIgnore(text: string): boolean {
-  return /(?:#|\/\/)\s*argus-ignore/.test(text);
+  return /(?:#|\/\/)\s*nephilex-ignore/.test(text);
 }
 
 /**
- * A `.argus.yml` allow entry, for files where an inline comment is not
+ * A `.nephilex.yml` allow entry, for files where an inline comment is not
  * possible (JSON, file-level findings). Values are quoted for YAML.
  */
 export function buildAllowEntry(ruleId: string, relPath: string, reason: string): string {

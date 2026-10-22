@@ -10,7 +10,7 @@ import {
   validateReason,
 } from '../../src/core/ignore';
 import { LineSource } from '../../src/core/mapping';
-import { ArgusFinding, parseReport } from '../../src/core/report';
+import { NephilexFinding, parseReport } from '../../src/core/report';
 
 const root = path.join(__dirname, '..', '..', '..', 'test', 'fixtures');
 const report = parseReport(fs.readFileSync(path.join(root, 'report-scan.json'), 'utf8'));
@@ -20,7 +20,7 @@ function doc(l: string[]): LineSource {
   return { lineCount: l.length, lineText: (i) => l[i] ?? '' };
 }
 
-function byRule(rule: string): ArgusFinding {
+function byRule(rule: string): NephilexFinding {
   const f = report.findings.find((x) => x.ruleId === rule);
   assert.ok(f, rule);
   return f;
@@ -64,7 +64,7 @@ describe('verified fixes', () => {
   });
 });
 
-describe('argus-ignore comments', () => {
+describe('nephilex-ignore comments', () => {
   it('picks a comment style the CLI recognizes', () => {
     assert.equal(commentStyleFor('python'), '#');
     assert.equal(commentStyleFor('yaml'), '#');
@@ -76,10 +76,10 @@ describe('argus-ignore comments', () => {
 
   it('builds a comment matching the engine pattern', () => {
     const suffix = buildIgnoreSuffix('#', 'patterns.python-shell-true', ' command is a constant ');
-    assert.equal(suffix, '  # argus-ignore: patterns.python-shell-true reason="command is a constant"');
-    // Same expression as _INLINE_IGNORE in argus/core/engine.py.
+    assert.equal(suffix, '  # nephilex-ignore: patterns.python-shell-true reason="command is a constant"');
+    // Same expression as _INLINE_IGNORE in nephilex/core/engine.py.
     const engine =
-      /(?:#|\/\/)\s*argus-ignore(?::\s*(?<rule>[A-Za-z0-9_.-]+))?[^\n]*?reason\s*=\s*['"](?<reason>[^'"]+)['"]/;
+      /(?:#|\/\/)\s*nephilex-ignore(?::\s*(?<rule>[A-Za-z0-9_.-]+))?[^\n]*?reason\s*=\s*['"](?<reason>[^'"]+)['"]/;
     const m = engine.exec('subprocess.run(cmd, shell=True)' + suffix);
     assert.equal(m?.groups?.['rule'], 'patterns.python-shell-true');
     assert.equal(m?.groups?.['reason'], 'command is a constant');
@@ -100,7 +100,7 @@ describe('argus-ignore comments', () => {
     assert.throws(() => buildIgnoreSuffix('//', 'bad rule"', 'fine reason'));
   });
 
-  it('builds a quoted .argus.yml allow entry', () => {
+  it('builds a quoted .nephilex.yml allow entry', () => {
     assert.equal(
       buildAllowEntry('secrets.generic', 'config\\app.json', 'test fixture'),
       'allow:\n  - rule: "secrets.generic"\n    path: "config/app.json"\n    reason: "test fixture"\n',

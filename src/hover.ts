@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import { hasVerifiedFix } from './core/fix';
 import { docsUrl, safeHttpsUrl } from './core/mapping';
-import { ArgusFinding, severityName } from './core/report';
+import { NephilexFinding, severityName } from './core/report';
 import { FindingStore } from './findingStore';
 
 const MAX_SECTION = 4000;
@@ -25,14 +25,14 @@ function escapeLabel(s: string): string {
  * workspace content and is inserted with `appendText` (escaped), never as
  * Markdown; the MarkdownString is not trusted, so command links do not run.
  */
-export function findingHover(f: ArgusFinding): vscode.MarkdownString {
+export function findingHover(f: NephilexFinding): vscode.MarkdownString {
   const md = new vscode.MarkdownString(undefined, false);
   md.isTrusted = false;
   md.supportHtml = false;
   const heading = (s: string): void => {
     md.appendMarkdown(`\n\n**${s}**\n\n`);
   };
-  md.appendMarkdown('**Argus: ');
+  md.appendMarkdown('**Nephilex: ');
   md.appendText(f.title);
   md.appendMarkdown('**\n\n');
   const tax = [severityName(f.severity).toUpperCase(), f.ruleId, ...f.cwe, ...f.owasp];
@@ -75,7 +75,7 @@ export function findingHover(f: ArgusFinding): vscode.MarkdownString {
   return md;
 }
 
-export class ArgusHoverProvider implements vscode.HoverProvider {
+export class NephilexHoverProvider implements vscode.HoverProvider {
   constructor(private readonly store: FindingStore) {}
 
   provideHover(doc: vscode.TextDocument, pos: vscode.Position): vscode.Hover | undefined {

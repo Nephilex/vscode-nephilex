@@ -1,16 +1,16 @@
 /**
- * Building the argus command line and reading its help output. Arguments are
+ * Building the nephilex command line and reading its help output. Arguments are
  * always an array handed to `child_process.spawn` without a shell; file
  * contents are never placed on the command line.
  */
 import { SeverityName } from './report';
 
 export interface CliCapabilities {
-  /** `argus check FILE... --format json` is available. */
+  /** `nephilex check FILE... --format json` is available. */
   hasCheck: boolean;
-  /** Long and short option names accepted by `argus check` (when present). */
+  /** Long and short option names accepted by `nephilex check` (when present). */
   checkOptions: ReadonlySet<string>;
-  /** Long and short option names accepted by `argus scan`. */
+  /** Long and short option names accepted by `nephilex scan`. */
   scanOptions: ReadonlySet<string>;
   version: string;
 }
@@ -79,7 +79,7 @@ export interface ScanArgsInput {
 }
 
 /**
- * Build the argument list after the executable (and after `-m argus` for the
+ * Build the argument list after the executable (and after `-m nephilex` for the
  * Python form). Optional flags are only added when the subcommand's help lists
  * them, so a newer or older CLI does not fail on an unknown option. Targets
  * follow `--` so a path can never be parsed as an option.
@@ -117,7 +117,7 @@ export function buildScanArgs(input: ScanArgsInput): string[] {
 }
 
 /**
- * Arguments that start `python -m argus` without importing modules from the
+ * Arguments that start `python -m nephilex` without importing modules from the
  * working directory: `-P` on Python 3.11+, isolated mode (`-I`) before that.
  * `versionText` is the output of `python -c "import sys; print(sys.version_info[:2])"`
  * style probes, for example "3.12".
@@ -127,7 +127,7 @@ export function pythonModuleArgs(versionText: string): string[] {
   const major = m ? Number(m[1]) : 0;
   const minor = m ? Number(m[2]) : 0;
   const safePath = major > 3 || (major === 3 && minor >= 11);
-  return [safePath ? '-P' : '-I', '-m', 'argus'];
+  return [safePath ? '-P' : '-I', '-m', 'nephilex'];
 }
 
 /** Probe run with `python -I -c ...` to read the interpreter version. */

@@ -1,13 +1,13 @@
 {
-  "name": "argus-security",
-  "displayName": "Argus Security",
-  "description": "Security findings from the Argus scanner (SAST, secrets, dependencies, IaC) as diagnostics, hovers, and quick fixes.",
+  "name": "nephilex",
+  "displayName": "Nephilex",
+  "description": "Security findings from the Nephilex scanner (SAST, secrets, dependencies, IaC) as diagnostics, hovers, and quick fixes.",
   "version": "0.1.0",
-  "publisher": "argus-codesecurity",
+  "publisher": "nephilex",
   "license": "Apache-2.0",
-  "homepage": "https://github.com/Argus-CodeSecurity/Argus-appsec",
+  "homepage": "https://github.com/nephilex/nephilex",
   "bugs": {
-    "url": "https://github.com/Argus-CodeSecurity/Argus-appsec/issues"
+    "url": "https://github.com/nephilex/nephilex/issues"
   },
   "engines": {
     "vscode": "^1.93.0"
@@ -21,7 +21,7 @@
     "sast",
     "secrets",
     "appsec",
-    "argus"
+    "nephilex"
   ],
   "main": "./dist/extension.js",
   "activationEvents": [
@@ -30,63 +30,63 @@
   "capabilities": {
     "untrustedWorkspaces": {
       "supported": "limited",
-      "description": "Argus does not run the scanner in Restricted Mode. Trust the workspace to enable scanning.",
+      "description": "Nephilex does not run the scanner in Restricted Mode. Trust the workspace to enable scanning.",
       "restrictedConfigurations": [
-        "argus.executablePath",
-        "argus.pythonPath",
-        "argus.extraArgs"
+        "nephilex.executablePath",
+        "nephilex.pythonPath",
+        "nephilex.extraArgs"
       ]
     },
     "virtualWorkspaces": {
       "supported": false,
-      "description": "Argus scans files on the local file system."
+      "description": "Nephilex scans files on the local file system."
     }
   },
   "contributes": {
     "commands": [
       {
-        "command": "argus.scanWorkspace",
+        "command": "nephilex.scanWorkspace",
         "title": "Scan Workspace",
-        "category": "Argus"
+        "category": "Nephilex"
       },
       {
-        "command": "argus.scanFile",
+        "command": "nephilex.scanFile",
         "title": "Scan Current File",
-        "category": "Argus"
+        "category": "Nephilex"
       },
       {
-        "command": "argus.clearFindings",
+        "command": "nephilex.clearFindings",
         "title": "Clear Findings",
-        "category": "Argus"
+        "category": "Nephilex"
       },
       {
-        "command": "argus.showProblems",
+        "command": "nephilex.showProblems",
         "title": "Show Problems",
-        "category": "Argus"
+        "category": "Nephilex"
       },
       {
-        "command": "argus.showLog",
+        "command": "nephilex.showLog",
         "title": "Show Log",
-        "category": "Argus"
+        "category": "Nephilex"
       },
       {
-        "command": "argus.ignoreFinding",
+        "command": "nephilex.ignoreFinding",
         "title": "Ignore Finding with Reason",
-        "category": "Argus"
+        "category": "Nephilex"
       }
     ],
     "menus": {
       "commandPalette": [
         {
-          "command": "argus.ignoreFinding",
+          "command": "nephilex.ignoreFinding",
           "when": "false"
         }
       ]
     },
     "configuration": {
-      "title": "Argus Security",
+      "title": "Nephilex",
       "properties": {
-        "argus.run": {
+        "nephilex.run": {
           "type": "string",
           "enum": [
             "off",
@@ -96,31 +96,31 @@
           "enumDescriptions": [
             "Only scan when a command is run.",
             "Scan a file when it is saved.",
-            "Scan a file while typing, after a short pause (see argus.debounceMs)."
+            "Scan a file while typing, after a short pause (see nephilex.debounceMs)."
           ],
           "default": "onSave",
           "description": "When to scan files automatically. Nothing runs automatically in Restricted Mode."
         },
-        "argus.debounceMs": {
+        "nephilex.debounceMs": {
           "type": "number",
           "default": 800,
           "minimum": 200,
           "maximum": 10000,
           "description": "Delay in milliseconds after the last edit before an on-type scan starts."
         },
-        "argus.executablePath": {
+        "nephilex.executablePath": {
           "type": "string",
           "default": "",
           "scope": "machine",
-          "description": "Absolute path to the argus executable. Leave empty to search PATH. Ignored when argus.pythonPath is set."
+          "description": "Absolute path to the nephilex executable. Leave empty to search PATH. Ignored when nephilex.pythonPath is set."
         },
-        "argus.pythonPath": {
+        "nephilex.pythonPath": {
           "type": "string",
           "default": "",
           "scope": "machine",
-          "description": "Path to a Python interpreter that has argus-appsec installed. When set, Argus runs as `python -m argus`."
+          "description": "Path to a Python interpreter that has nephilex installed. When set, Nephilex runs as `python -m nephilex`."
         },
-        "argus.minSeverity": {
+        "nephilex.minSeverity": {
           "type": "string",
           "enum": [
             "info",
@@ -132,60 +132,60 @@
           "default": "low",
           "description": "Only show findings at or above this severity."
         },
-        "argus.scanners": {
+        "nephilex.scanners": {
           "type": "array",
           "items": {
             "type": "string",
             "pattern": "^[A-Za-z0-9_.-]+$"
           },
           "default": [],
-          "description": "Scanners to run (see `argus scanners`). Empty runs the CLI default set."
+          "description": "Scanners to run (see `nephilex scanners`). Empty runs the CLI default set."
         },
-        "argus.extraArgs": {
+        "nephilex.extraArgs": {
           "type": "array",
           "items": {
             "type": "string"
           },
           "default": [],
-          "description": "Extra arguments passed to the argus CLI, one argument per item. Output and format flags are managed by the extension and are dropped."
+          "description": "Extra arguments passed to the nephilex CLI, one argument per item. Output and format flags are managed by the extension and are dropped."
         },
-        "argus.offlineEnrichment": {
+        "nephilex.offlineEnrichment": {
           "type": "boolean",
           "default": true,
           "description": "Pass --ai-provider heuristic --patches so hovers include offline reasoning and verified deterministic fixes. No network AI calls are made. When false, --no-ai is passed."
         },
-        "argus.timeoutSeconds": {
+        "nephilex.timeoutSeconds": {
           "type": "number",
           "default": 60,
           "minimum": 5,
           "maximum": 3600,
           "description": "Fail-safe timeout for a single-file scan. The CLI process is killed when it is exceeded."
         },
-        "argus.workspaceTimeoutSeconds": {
+        "nephilex.workspaceTimeoutSeconds": {
           "type": "number",
           "default": 900,
           "minimum": 30,
           "maximum": 21600,
           "description": "Fail-safe timeout for a workspace scan. The CLI process is killed when it is exceeded."
         },
-        "argus.maxOutputMB": {
+        "nephilex.maxOutputMB": {
           "type": "number",
           "default": 64,
           "minimum": 1,
           "maximum": 512,
           "description": "Maximum size of CLI output read by the extension. The scan is aborted when it is exceeded."
         },
-        "argus.mcp.enabled": {
+        "nephilex.mcp.enabled": {
           "type": "boolean",
           "default": true,
-          "description": "Register the Argus MCP server (`argus mcp`) for agent mode when the editor supports the MCP server definition API."
+          "description": "Register the Nephilex MCP server (`nephilex mcp`) for agent mode when the editor supports the MCP server definition API."
         }
       }
     },
     "mcpServerDefinitionProviders": [
       {
-        "id": "argus.mcpServer",
-        "label": "Argus Security"
+        "id": "nephilex",
+        "label": "nephilex"
       }
     ]
   },

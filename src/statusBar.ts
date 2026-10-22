@@ -4,13 +4,13 @@ import { FindingStore } from './findingStore';
 
 export type CliState = 'unknown' | 'ready' | 'missing' | 'untrusted';
 
-export class ArgusStatusBar implements vscode.Disposable {
-  private readonly item = vscode.window.createStatusBarItem('argus.status', vscode.StatusBarAlignment.Left, 50);
+export class NephilexStatusBar implements vscode.Disposable {
+  private readonly item = vscode.window.createStatusBarItem('nephilex.status', vscode.StatusBarAlignment.Left, 50);
   private busy = false;
   private cli: CliState = 'unknown';
 
   constructor(private readonly store: FindingStore) {
-    this.item.name = 'Argus Security';
+    this.item.name = 'Nephilex';
     this.update();
     this.item.show();
   }
@@ -30,18 +30,18 @@ export class ArgusStatusBar implements vscode.Disposable {
     const total = this.store.total();
     this.item.backgroundColor = undefined;
     if (this.cli === 'untrusted') {
-      this.item.text = '$(shield) Argus: restricted';
-      this.item.tooltip = 'Argus does not run in Restricted Mode. Trust this workspace to enable scanning.';
+      this.item.text = '$(shield) Nephilex: restricted';
+      this.item.tooltip = 'Nephilex does not run in Restricted Mode. Trust this workspace to enable scanning.';
       this.item.command = 'workbench.trust.manage';
       return;
     }
     if (this.cli === 'missing') {
-      this.item.text = '$(shield) Argus: CLI not found';
-      this.item.tooltip = 'The argus CLI was not found. Click for install instructions.';
+      this.item.text = '$(shield) Nephilex: CLI not found';
+      this.item.tooltip = 'The nephilex CLI was not found. Click for install instructions.';
       this.item.command = Commands.installHelp;
       return;
     }
-    this.item.text = `${this.busy ? '$(sync~spin)' : '$(shield)'} Argus: ${n}`;
+    this.item.text = `${this.busy ? '$(sync~spin)' : '$(shield)'} Nephilex: ${n}`;
     this.item.tooltip = `${n} critical or high finding(s), ${total} in total. Click to open the Problems view.`;
     this.item.command = Commands.showProblems;
     if (n > 0) {
@@ -56,7 +56,7 @@ export class ArgusStatusBar implements vscode.Disposable {
 
 /**
  * Open the Problems view and put focus in its filter box. There is no public
- * API to set the filter text, so the user types "Argus" (the diagnostic
+ * API to set the filter text, so the user types "Nephilex" (the diagnostic
  * source) to narrow the list. Both commands are core workbench commands
  * shared by VS Code forks; failures are ignored.
  */
@@ -67,5 +67,8 @@ export async function showProblems(): Promise<void> {
     await vscode.commands.executeCommand('workbench.actions.view.problems').then(undefined, () => undefined);
   }
   await vscode.commands.executeCommand('problems.action.focusFilter').then(undefined, () => undefined);
-  void vscode.window.setStatusBarMessage('Type "Argus" in the Problems filter to show only Argus findings.', 8000);
+  void vscode.window.setStatusBarMessage(
+    'Type "Nephilex" in the Problems filter to show only Nephilex findings.',
+    8000,
+  );
 }

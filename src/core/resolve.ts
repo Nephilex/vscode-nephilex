@@ -1,10 +1,10 @@
 /**
- * Locating the argus executable (or a Python interpreter running
- * `python -m argus`) without ever trusting the workspace implicitly.
+ * Locating the nephilex executable (or a Python interpreter running
+ * `python -m nephilex`) without ever trusting the workspace implicitly.
  *
  * - PATH lookup is done here, not by the OS: on Windows, spawning a bare name
  *   searches the current directory first, which would run a planted
- *   `argus.exe` from the workspace. Relative PATH entries are skipped.
+ *   `nephilex.exe` from the workspace. Relative PATH entries are skipped.
  * - In an untrusted workspace, any candidate inside a workspace folder is
  *   rejected, whether it came from PATH or from a setting.
  * - Batch files are refused on Windows because they cannot run without a
@@ -29,7 +29,7 @@ export interface ResolvedCli {
   /** Absolute path of the program to spawn. */
   command: string;
   /** Where the path came from, for log messages. */
-  source: 'argus.executablePath' | 'argus.pythonPath' | 'PATH';
+  source: 'nephilex.executablePath' | 'nephilex.pythonPath' | 'PATH';
 }
 
 export type ResolveResult =
@@ -86,7 +86,7 @@ function check(
       reason: 'notFound',
       message:
         source === 'PATH'
-          ? 'The argus executable was not found on PATH.'
+          ? 'The nephilex executable was not found on PATH.'
           : `The program set in ${source} was not found.`,
     };
   }
@@ -94,7 +94,7 @@ function check(
     return {
       ok: false,
       reason: 'rejected',
-      message: `${source} points to a batch file (${candidate}); point it at argus.exe or a Python interpreter instead.`,
+      message: `${source} points to a batch file (${candidate}); point it at nephilex.exe or a Python interpreter instead.`,
     };
   }
   if (!input.trusted && input.workspaceFolders.some((w) => isInside(candidate, w, input.platform))) {
@@ -132,10 +132,10 @@ function fromSetting(
 
 export function resolveCli(input: ResolveInput): ResolveResult {
   if (input.pythonPath.trim()) {
-    return fromSetting(input.pythonPath, 'argus.pythonPath', 'python', input);
+    return fromSetting(input.pythonPath, 'nephilex.pythonPath', 'python', input);
   }
   if (input.executablePath.trim()) {
-    return fromSetting(input.executablePath, 'argus.executablePath', 'executable', input);
+    return fromSetting(input.executablePath, 'nephilex.executablePath', 'executable', input);
   }
-  return check(searchPath('argus', input), 'PATH', 'executable', input);
+  return check(searchPath('nephilex', input), 'PATH', 'executable', input);
 }

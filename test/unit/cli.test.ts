@@ -11,11 +11,11 @@ import {
 import { resolveCli, ResolveInput } from '../../src/core/resolve';
 
 const RICH_HELP = [
-  ' Usage: argus [OPTIONS] COMMAND [ARGS]...',
+  ' Usage: nephilex [OPTIONS] COMMAND [ARGS]...',
   '\u250c\u2500 Commands \u2500\u2510',
   '\u2502 scan            Scan a target and report findings.          \u2502',
   '\u2502 check           Scan files and print findings.               \u2502',
-  '\u2502 mcp             Run Argus as an MCP server (stdio).          \u2502',
+  '\u2502 mcp             Run Nephilex as an MCP server (stdio).          \u2502',
   '\u2502                 a scan check for the commands column         \u2502',
 ].join('\n');
 
@@ -36,7 +36,7 @@ describe('help parsing', () => {
   });
 
   it('reads the version', () => {
-    assert.equal(parseVersion('Argus v0.9.2\n'), '0.9.2');
+    assert.equal(parseVersion('Nephilex v0.9.2\n'), '0.9.2');
     assert.equal(parseVersion('nothing'), '');
   });
 });
@@ -60,7 +60,7 @@ describe('argument building', () => {
       scanners: ['patterns', 'secrets', 'bad name;rm'],
       offlineEnrichment: true,
       extraArgs: ['--profile', 'fast', '-o', 'x.json', '--format=sarif'],
-      configPath: '/w/.argus.yml',
+      configPath: '/w/.nephilex.yml',
       supported,
     });
     assert.deepEqual(args, [
@@ -76,7 +76,7 @@ describe('argument building', () => {
       'heuristic',
       '--patches',
       '--config',
-      '/w/.argus.yml',
+      '/w/.nephilex.yml',
       '--profile',
       'fast',
       '--',
@@ -105,10 +105,10 @@ describe('argument building', () => {
   });
 
   it('starts python without the working directory on sys.path', () => {
-    assert.deepEqual(pythonModuleArgs('3.12\n'), ['-P', '-m', 'argus']);
-    assert.deepEqual(pythonModuleArgs('3.11'), ['-P', '-m', 'argus']);
-    assert.deepEqual(pythonModuleArgs('3.10'), ['-I', '-m', 'argus']);
-    assert.deepEqual(pythonModuleArgs(''), ['-I', '-m', 'argus']);
+    assert.deepEqual(pythonModuleArgs('3.12\n'), ['-P', '-m', 'nephilex']);
+    assert.deepEqual(pythonModuleArgs('3.11'), ['-P', '-m', 'nephilex']);
+    assert.deepEqual(pythonModuleArgs('3.10'), ['-I', '-m', 'nephilex']);
+    assert.deepEqual(pythonModuleArgs(''), ['-I', '-m', 'nephilex']);
   });
 });
 
@@ -116,7 +116,7 @@ describe('executable resolution', () => {
   const win = process.platform === 'win32';
   const ws = path.resolve(win ? 'C:\\work\\repo' : '/work/repo');
   const bin = path.resolve(win ? 'C:\\tools\\bin' : '/usr/local/bin');
-  const exe = win ? 'argus.exe' : 'argus';
+  const exe = win ? 'nephilex.exe' : 'nephilex';
 
   function input(over: Partial<ResolveInput>, files: string[]): ResolveInput {
     const set = new Set(files.map((f) => path.resolve(f)));
@@ -135,7 +135,7 @@ describe('executable resolution', () => {
 
   const delim = win ? ';' : ':';
 
-  it('finds argus on PATH and returns an absolute path', () => {
+  it('finds nephilex on PATH and returns an absolute path', () => {
     const r = resolveCli(input({ envPath: ['relative', bin].join(delim) }, [path.join(bin, exe)]));
     assert.ok(r.ok);
     assert.equal(r.cli.command, path.join(bin, exe));
@@ -164,7 +164,7 @@ describe('executable resolution', () => {
   });
 
   it('rejects relative paths with separators', () => {
-    const r = resolveCli(input({ executablePath: './bin/argus' }, []));
+    const r = resolveCli(input({ executablePath: './bin/nephilex' }, []));
     assert.equal(r.ok ? '' : r.reason, 'rejected');
   });
 
@@ -175,13 +175,13 @@ describe('executable resolution', () => {
 
   if (win) {
     it('refuses batch files on Windows', () => {
-      const p = 'C:\\tools\\argus.cmd';
+      const p = 'C:\\tools\\nephilex.cmd';
       const r = resolveCli(input({ executablePath: p }, [p]));
       assert.equal(r.ok ? '' : r.reason, 'rejected');
     });
 
     it('only considers .exe and .com from PATHEXT', () => {
-      const r = resolveCli(input({ envPath: bin }, [path.join(bin, 'argus.bat')]));
+      const r = resolveCli(input({ envPath: bin }, [path.join(bin, 'nephilex.bat')]));
       assert.equal(r.ok, false);
     });
   }

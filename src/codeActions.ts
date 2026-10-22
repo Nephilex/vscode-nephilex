@@ -13,7 +13,7 @@ export interface IgnoreArgs {
   character: number;
 }
 
-export class ArgusCodeActionProvider implements vscode.CodeActionProvider {
+export class NephilexCodeActionProvider implements vscode.CodeActionProvider {
   static readonly kinds = [vscode.CodeActionKind.QuickFix];
 
   constructor(private readonly store: FindingStore) {}
@@ -32,7 +32,7 @@ export class ArgusCodeActionProvider implements vscode.CodeActionProvider {
       const f = stored.finding;
       const fix = computeFix(f, documentLines(doc));
       if (fix) {
-        const action = new vscode.CodeAction('Apply Argus fix', vscode.CodeActionKind.QuickFix);
+        const action = new vscode.CodeAction('Apply Nephilex fix', vscode.CodeActionKind.QuickFix);
         const edit = new vscode.WorkspaceEdit();
         for (const r of fix) {
           edit.replace(doc.uri, doc.lineAt(r.line).range, r.newText);
@@ -71,13 +71,13 @@ function isIgnoreArgs(v: unknown): v is IgnoreArgs {
 }
 
 /**
- * Prompt for a reason (required) and append an `argus-ignore` comment to the
+ * Prompt for a reason (required) and append an `nephilex-ignore` comment to the
  * finding's line. Where the language has no `#` or `//` comment, or the
- * finding is file-level, offer a `.argus.yml` allow entry instead.
+ * finding is file-level, offer a `.nephilex.yml` allow entry instead.
  */
 export async function ignoreFinding(store: FindingStore, raw: unknown): Promise<void> {
   if (!isIgnoreArgs(raw)) {
-    void vscode.window.showInformationMessage('Use the "Ignore with reason" quick fix on an Argus problem.');
+    void vscode.window.showInformationMessage('Use the "Ignore with reason" quick fix on a Nephilex problem.');
     return;
   }
   const uri = vscode.Uri.parse(raw.uri, true);
@@ -107,13 +107,13 @@ export async function ignoreFinding(store: FindingStore, raw: unknown): Promise<
     const rel = folder ? path.relative(folder.uri.fsPath, uri.fsPath) : path.basename(uri.fsPath);
     await vscode.env.clipboard.writeText(buildAllowEntry(raw.ruleId, rel, reason));
     void vscode.window.showInformationMessage(
-      'This file type has no supported inline comment. An allow entry for .argus.yml was copied to the clipboard.',
+      'This file type has no supported inline comment. An allow entry for .nephilex.yml was copied to the clipboard.',
     );
     return;
   }
   const line = doc.lineAt(raw.line);
   if (lineHasIgnore(line.text)) {
-    void vscode.window.showWarningMessage('This line already has an argus-ignore comment. Edit it by hand.');
+    void vscode.window.showWarningMessage('This line already has a nephilex-ignore comment. Edit it by hand.');
     return;
   }
   const suffix = buildIgnoreSuffix(style, raw.ruleId, reason);

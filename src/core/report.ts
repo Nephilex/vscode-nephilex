@@ -1,6 +1,6 @@
 /**
- * Parsing and validation of the Argus JSON report (`argus scan -f json` and
- * `argus check --format json`). The schema mirrors `argus.core.models` in the
+ * Parsing and validation of the Nephilex JSON report (`nephilex scan -f json` and
+ * `nephilex check --format json`). The schema mirrors `nephilex.core.models` in the
  * main repository (ScanResult, Finding, Location, Remediation).
  *
  * The report is produced by scanning workspace content, so every string in it
@@ -14,7 +14,7 @@ export type SeverityName = (typeof SEVERITY_NAMES)[number];
 /** Numeric severity as emitted by the CLI: 0 = info ... 4 = critical. */
 export type SeverityLevel = 0 | 1 | 2 | 3 | 4;
 
-export interface ArgusLocation {
+export interface NephilexLocation {
   path: string;
   startLine?: number;
   endLine?: number;
@@ -23,7 +23,7 @@ export interface ArgusLocation {
   snippet?: string;
 }
 
-export interface ArgusRemediation {
+export interface NephilexRemediation {
   summary: string;
   guidance: string;
   patch?: string;
@@ -31,32 +31,32 @@ export interface ArgusRemediation {
   verified: boolean;
 }
 
-export interface ArgusFinding {
+export interface NephilexFinding {
   id: string;
   ruleId: string;
   scanner: string;
   title: string;
   description: string;
-  location: ArgusLocation;
+  location: NephilexLocation;
   severity: SeverityLevel;
   cwe: string[];
   owasp: string[];
   whyVulnerable: string;
   attackerPerspective: string;
   businessImpact: string;
-  remediation?: ArgusRemediation;
+  remediation?: NephilexRemediation;
   docsUrl?: string;
   /** `metadata.patch_source`: "deterministic" or "ai-proposed" when a patch exists. */
   patchSource?: string;
 }
 
-export interface ArgusReport {
+export interface NephilexReport {
   target: string;
-  argusVersion: string;
+  nephilexVersion: string;
   scannersRun: string[];
   scannersFailed: string[];
   errors: string[];
-  findings: ArgusFinding[];
+  findings: NephilexFinding[];
   /** Number of entries in `findings` that were malformed and skipped. */
   skipped: number;
 }
@@ -127,7 +127,7 @@ export function severityName(level: SeverityLevel): SeverityName {
   return SEVERITY_NAMES[level];
 }
 
-function parseLocation(v: unknown): ArgusLocation | undefined {
+function parseLocation(v: unknown): NephilexLocation | undefined {
   if (!isObject(v)) {
     return undefined;
   }
@@ -145,7 +145,7 @@ function parseLocation(v: unknown): ArgusLocation | undefined {
   };
 }
 
-function parseRemediation(v: unknown): ArgusRemediation | undefined {
+function parseRemediation(v: unknown): NephilexRemediation | undefined {
   if (!isObject(v)) {
     return undefined;
   }
@@ -158,7 +158,7 @@ function parseRemediation(v: unknown): ArgusRemediation | undefined {
   };
 }
 
-export function parseFinding(v: unknown): ArgusFinding | undefined {
+export function parseFinding(v: unknown): NephilexFinding | undefined {
   if (!isObject(v)) {
     return undefined;
   }
@@ -189,23 +189,23 @@ export function parseFinding(v: unknown): ArgusFinding | undefined {
 }
 
 /** Parse a report from CLI stdout (string) or an already decoded value. */
-export function parseReport(input: unknown): ArgusReport {
+export function parseReport(input: unknown): NephilexReport {
   let raw: unknown = input;
   if (typeof input === 'string') {
     const text = input.trim();
     if (!text) {
-      throw new ReportParseError('Argus produced no output.');
+      throw new ReportParseError('Nephilex produced no output.');
     }
     try {
       raw = JSON.parse(text) as unknown;
     } catch {
-      throw new ReportParseError('Argus output is not valid JSON.');
+      throw new ReportParseError('Nephilex output is not valid JSON.');
     }
   }
   if (!isObject(raw) || !Array.isArray(raw['findings'])) {
-    throw new ReportParseError('Argus output is not a scan report (no "findings" array).');
+    throw new ReportParseError('Nephilex output is not a scan report (no "findings" array).');
   }
-  const findings: ArgusFinding[] = [];
+  const findings: NephilexFinding[] = [];
   let skipped = 0;
   for (const item of raw['findings'].slice(0, MAX_FINDINGS)) {
     const f = parseFinding(item);
@@ -217,7 +217,7 @@ export function parseReport(input: unknown): ArgusReport {
   }
   return {
     target: str(raw['target'], 4096),
-    argusVersion: str(raw['argus_version'], 64),
+    nephilexVersion: str(raw['nephilex_version'], 64),
     scannersRun: strList(raw['scanners_run']),
     scannersFailed: strList(raw['scanners_failed']),
     errors: strList(raw['errors'], 2048),

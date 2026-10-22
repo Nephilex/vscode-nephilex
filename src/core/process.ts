@@ -116,7 +116,7 @@ export function runProcess(opts: RunOptions): Promise<RunResult> {
     };
     const onAbort = (): void => fail('cancelled', 'Cancelled.');
     const timer = setTimeout(
-      () => fail('timeout', `Argus did not finish within ${Math.round(opts.timeoutMs / 1000)} s and was stopped.`),
+      () => fail('timeout', `Nephilex did not finish within ${Math.round(opts.timeoutMs / 1000)} s and was stopped.`),
       opts.timeoutMs,
     );
     opts.signal?.addEventListener('abort', onAbort, { once: true });
@@ -126,7 +126,7 @@ export function runProcess(opts: RunOptions): Promise<RunResult> {
       if (outBytes > opts.maxOutputBytes) {
         fail(
           'outputLimit',
-          `Argus output exceeded ${Math.round(opts.maxOutputBytes / (1024 * 1024))} MB and was stopped.`,
+          `Nephilex output exceeded ${Math.round(opts.maxOutputBytes / (1024 * 1024))} MB and was stopped.`,
         );
         return;
       }

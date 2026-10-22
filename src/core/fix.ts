@@ -1,12 +1,12 @@
 /**
- * Deterministic fixes. Argus attaches a unified diff to `remediation.patch`.
+ * Deterministic fixes. Nephilex attaches a unified diff to `remediation.patch`.
  * A fix is offered only when the CLI marks it `verified` (re-scanned and the
  * detection no longer fires) and it was not machine proposed. The diff is
  * built from the finding snippet, which the CLI stores without the line's
  * leading indentation, so lines are matched on trimmed content and the
  * original indentation is preserved.
  */
-import { ArgusFinding } from './report';
+import { NephilexFinding } from './report';
 import { LineSource } from './mapping';
 
 export interface ParsedHunk {
@@ -65,7 +65,7 @@ export function parseSingleHunk(patch: string): ParsedHunk | undefined {
 }
 
 /** True when the finding carries a verified, deterministic patch. */
-export function hasVerifiedFix(f: ArgusFinding): boolean {
+export function hasVerifiedFix(f: NephilexFinding): boolean {
   const r = f.remediation;
   if (!r || !r.verified || !r.patch) {
     return false;
@@ -81,7 +81,7 @@ export function hasVerifiedFix(f: ArgusFinding): boolean {
  * the document no longer matches the patch (stale result), so a fix is never
  * applied to code it was not generated for.
  */
-export function computeFix(f: ArgusFinding, doc: LineSource): LineReplacement[] | undefined {
+export function computeFix(f: NephilexFinding, doc: LineSource): LineReplacement[] | undefined {
   if (!hasVerifiedFix(f)) {
     return undefined;
   }

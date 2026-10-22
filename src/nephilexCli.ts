@@ -10,11 +10,11 @@ import {
 } from './core/cli';
 import { RunError, RunResult, runProcess } from './core/process';
 import { ResolvedCli, resolveCli } from './core/resolve';
-import { ArgusSettings } from './settings';
+import { NephilexSettings } from './settings';
 
 export interface PreparedCli {
   resolved: ResolvedCli;
-  /** Arguments placed before the subcommand (`-P -m argus` for the Python form). */
+  /** Arguments placed before the subcommand (`-P -m nephilex` for the Python form). */
   prefix: string[];
   caps: CliCapabilities;
 }
@@ -45,10 +45,10 @@ function workspaceFolderPaths(): string[] {
 }
 
 /**
- * Resolves and probes the argus CLI once per configuration and caches the
+ * Resolves and probes the nephilex CLI once per configuration and caches the
  * result. Nothing is executed while the workspace is untrusted.
  */
-export class ArgusCli {
+export class NephilexCli {
   private cache?: { key: string; result: Promise<PrepareResult> };
 
   constructor(
@@ -61,12 +61,12 @@ export class ArgusCli {
     this.cache = undefined;
   }
 
-  prepare(settings: ArgusSettings): Promise<PrepareResult> {
+  prepare(settings: NephilexSettings): Promise<PrepareResult> {
     if (!vscode.workspace.isTrusted) {
       return Promise.resolve({
         ok: false,
         reason: 'untrusted',
-        message: 'Argus does not run in Restricted Mode. Trust this workspace to enable scanning.',
+        message: 'Nephilex does not run in Restricted Mode. Trust this workspace to enable scanning.',
       });
     }
     const key = JSON.stringify([settings.executablePath, settings.pythonPath, workspaceFolderPaths()]);
@@ -83,7 +83,7 @@ export class ArgusCli {
     return this.cache.result;
   }
 
-  private async doPrepare(settings: ArgusSettings): Promise<PrepareResult> {
+  private async doPrepare(settings: NephilexSettings): Promise<PrepareResult> {
     const resolved = resolveCli({
       executablePath: settings.executablePath,
       pythonPath: settings.pythonPath,
@@ -100,7 +100,7 @@ export class ArgusCli {
     }
     const cli = resolved.cli;
     this.log.info(
-      `Using ${cli.kind === 'python' ? 'Python interpreter' : 'argus executable'} ${cli.command} (from ${cli.source})`,
+      `Using ${cli.kind === 'python' ? 'Python interpreter' : 'nephilex executable'} ${cli.command} (from ${cli.source})`,
     );
     try {
       let prefix: string[] = [];
@@ -118,7 +118,7 @@ export class ArgusCli {
         return {
           ok: false,
           reason: cli.kind === 'python' && /No module named/i.test(detail) ? 'notFound' : 'broken',
-          message: `${cli.command} does not look like the Argus CLI. ${detail}`.trim(),
+          message: `${cli.command} does not look like the Nephilex CLI. ${detail}`.trim(),
         };
       }
       const hasCheck = helpListsCommand(help.stdout, 'check');
@@ -132,12 +132,12 @@ export class ArgusCli {
         version: parseVersion(version.stdout + version.stderr),
       };
       this.log.info(
-        `Argus ${caps.version || '(unknown version)'}; check command ${hasCheck ? 'available' : 'not available, using scan'}`,
+        `Nephilex ${caps.version || '(unknown version)'}; check command ${hasCheck ? 'available' : 'not available, using scan'}`,
       );
       return { ok: true, cli: { resolved: cli, prefix, caps } };
     } catch (err) {
       const message = err instanceof RunError ? err.message : String(err);
-      this.log.error(`Probing the Argus CLI failed: ${message}`);
+      this.log.error(`Probing the Nephilex CLI failed: ${message}`);
       return {
         ok: false,
         reason: err instanceof RunError && err.kind === 'notFound' ? 'notFound' : 'broken',

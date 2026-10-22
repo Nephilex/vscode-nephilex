@@ -1,40 +1,40 @@
 import * as fs from 'node:fs';
 import * as vscode from 'vscode';
-import { ArgusCli } from './argusCli';
-import { ArgusCodeActionProvider, ignoreFinding } from './codeActions';
+import { NephilexCli } from './nephilexCli';
+import { NephilexCodeActionProvider, ignoreFinding } from './codeActions';
 import { Commands, CONFIG_SECTION, INSTALL_COMMAND, INSTALL_URL } from './constants';
 import { FindingStore } from './findingStore';
-import { ArgusHoverProvider } from './hover';
+import { NephilexHoverProvider } from './hover';
 import { registerMcpProvider } from './mcp';
 import { CliProblem, ScanController } from './scanController';
 import { readSettings } from './settings';
-import { ArgusStatusBar, showProblems } from './statusBar';
+import { NephilexStatusBar, showProblems } from './statusBar';
 
 const FILE_SELECTOR: vscode.DocumentSelector = { scheme: 'file' };
 
-export interface ArgusApi {
+export interface NephilexApi {
   /** For tests: the finding store backing diagnostics. */
   readonly store: FindingStore;
 }
 
-export function activate(context: vscode.ExtensionContext): ArgusApi {
-  const log = vscode.window.createOutputChannel('Argus', { log: true });
+export function activate(context: vscode.ExtensionContext): NephilexApi {
+  const log = vscode.window.createOutputChannel('Nephilex', { log: true });
   const safeCwd = context.globalStorageUri.fsPath;
   fs.mkdirSync(safeCwd, { recursive: true });
 
-  const cli = new ArgusCli(log, safeCwd);
+  const cli = new NephilexCli(log, safeCwd);
   const store = new FindingStore();
-  const status = new ArgusStatusBar(store);
+  const status = new NephilexStatusBar(store);
   let missingShown = false;
 
   const showInstallHelp = async (message: string): Promise<void> => {
     const choice = await vscode.window.showErrorMessage(
-      `${message} Install it with "${INSTALL_COMMAND}", or set argus.executablePath or argus.pythonPath.`,
-      'Install Argus',
+      `${message} Install it with "${INSTALL_COMMAND}", or set nephilex.executablePath or nephilex.pythonPath.`,
+      'Install Nephilex',
       'Copy Install Command',
       'Open Settings',
     );
-    if (choice === 'Install Argus') {
+    if (choice === 'Install Nephilex') {
       await vscode.env.openExternal(vscode.Uri.parse(INSTALL_URL));
     } else if (choice === 'Copy Install Command') {
       await vscode.env.clipboard.writeText(INSTALL_COMMAND);
@@ -63,7 +63,7 @@ export function activate(context: vscode.ExtensionContext): ArgusApi {
   };
 
   const scanner = new ScanController(cli, store, log, onCliProblem);
-  // Always registered where supported; the provider returns nothing while argus.mcp.enabled is off.
+  // Always registered where supported; the provider returns nothing while nephilex.mcp.enabled is off.
   const mcp = registerMcpProvider(cli, log);
 
   const refreshCliState = (): void => {
@@ -91,16 +91,16 @@ export function activate(context: vscode.ExtensionContext): ArgusApi {
       status.setBusy(busy);
     }),
 
-    vscode.languages.registerHoverProvider(FILE_SELECTOR, new ArgusHoverProvider(store)),
-    vscode.languages.registerCodeActionsProvider(FILE_SELECTOR, new ArgusCodeActionProvider(store), {
-      providedCodeActionKinds: ArgusCodeActionProvider.kinds,
+    vscode.languages.registerHoverProvider(FILE_SELECTOR, new NephilexHoverProvider(store)),
+    vscode.languages.registerCodeActionsProvider(FILE_SELECTOR, new NephilexCodeActionProvider(store), {
+      providedCodeActionKinds: NephilexCodeActionProvider.kinds,
     }),
 
     vscode.commands.registerCommand(Commands.scanWorkspace, () => scanner.scanWorkspace()),
     vscode.commands.registerCommand(Commands.scanFile, async () => {
       const doc = vscode.window.activeTextEditor?.document;
       if (!doc) {
-        void vscode.window.showInformationMessage('Open a file to scan it with Argus.');
+        void vscode.window.showInformationMessage('Open a file to scan it with Nephilex.');
         return;
       }
       await scanner.scanDocument(doc, true);
@@ -114,7 +114,7 @@ export function activate(context: vscode.ExtensionContext): ArgusApi {
       if (prep.ok) {
         status.setCliState('ready');
         void vscode.window.showInformationMessage(
-          `Argus ${prep.cli.caps.version} found at ${prep.cli.resolved.command}.`,
+          `Nephilex ${prep.cli.caps.version} found at ${prep.cli.resolved.command}.`,
         );
       } else {
         onCliProblem(prep, true);

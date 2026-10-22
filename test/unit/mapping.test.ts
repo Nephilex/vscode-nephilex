@@ -13,13 +13,13 @@ import {
   samePath,
   severityAtLeast,
 } from '../../src/core/mapping';
-import { ArgusFinding } from '../../src/core/report';
+import { NephilexFinding } from '../../src/core/report';
 
 function lines(...l: string[]): LineSource {
   return { lineCount: l.length, lineText: (i) => l[i] ?? '' };
 }
 
-function finding(over: Partial<ArgusFinding> = {}): ArgusFinding {
+function finding(over: Partial<NephilexFinding> = {}): NephilexFinding {
   return {
     id: 'x',
     ruleId: 'patterns.python-yaml-load',
@@ -127,7 +127,7 @@ describe('paths', () => {
   });
 
   it('detects containment without prefix confusion', () => {
-    assert.equal(isInside(path.join(root, 'x', 'argus.exe'), root), true);
+    assert.equal(isInside(path.join(root, 'x', 'nephilex.exe'), root), true);
     assert.equal(isInside(root, root), true);
     assert.equal(isInside(root + '-other', root), false);
     assert.equal(isInside(path.resolve('/work'), root), false);

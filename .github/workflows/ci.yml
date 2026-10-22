@@ -48,13 +48,13 @@ jobs:
       - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version: '3.12'
-      - name: Install the Argus CLI
+      - name: Install the Nephilex CLI
         shell: bash
         run: |
-          python -m venv "$RUNNER_TEMP/argus-venv"
-          if [ "$RUNNER_OS" = "Windows" ]; then bin="$RUNNER_TEMP/argus-venv/Scripts"; else bin="$RUNNER_TEMP/argus-venv/bin"; fi
-          "$bin/python" -m pip install --disable-pip-version-check argus-appsec==0.8.1
-          echo "ARGUS_TEST_EXECUTABLE=$(cd "$bin" && pwd -W 2>/dev/null || pwd)/argus$([ "$RUNNER_OS" = "Windows" ] && echo .exe)" >> "$GITHUB_ENV"
+          python -m venv "$RUNNER_TEMP/nephilex-venv"
+          if [ "$RUNNER_OS" = "Windows" ]; then bin="$RUNNER_TEMP/nephilex-venv/Scripts"; else bin="$RUNNER_TEMP/nephilex-venv/bin"; fi
+          "$bin/python" -m pip install --disable-pip-version-check nephilex
+          echo "NEPHILEX_TEST_EXECUTABLE=$(cd "$bin" && pwd -W 2>/dev/null || pwd)/nephilex$([ "$RUNNER_OS" = "Windows" ] && echo .exe)" >> "$GITHUB_ENV"
       - run: npm ci
       - name: Integration tests (Linux)
         if: runner.os == 'Linux'

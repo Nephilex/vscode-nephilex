@@ -2,19 +2,19 @@ import * as fs from 'node:fs/promises';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import * as vscode from 'vscode';
-import { ArgusCli, PrepareResult, PreparedCli } from './argusCli';
+import { NephilexCli, PrepareResult, PreparedCli } from './nephilexCli';
 import { buildScanArgs, sanitizeExtraArgs } from './core/cli';
 import { isInside, resolveFindingPath, samePath, severityAtLeast } from './core/mapping';
 import { RunError } from './core/process';
-import { ArgusFinding, ArgusReport, parseReport, ReportParseError } from './core/report';
+import { NephilexFinding, NephilexReport, parseReport, ReportParseError } from './core/report';
 import { documentLines, FindingStore, StoredFinding, textLines, toDiagnostic } from './findingStore';
-import { ArgusSettings, readSettings } from './settings';
+import { NephilexSettings, readSettings } from './settings';
 
 export type CliProblem = Extract<PrepareResult, { ok: false }>;
 
 /** Files larger than this are not scanned on save or on type. */
 const MAX_DOCUMENT_BYTES = 5 * 1024 * 1024;
-const CONFIG_FILES = ['.argus.yml', '.argus.yaml'];
+const CONFIG_FILES = ['.nephilex.yml', '.nephilex.yaml'];
 
 async function exists(p: string): Promise<boolean> {
   try {
@@ -47,8 +47,8 @@ async function canonical(p: string): Promise<string> {
   }
 }
 
-/** The directory Argus reports paths relative to. */
-async function reportRoot(report: ArgusReport, fallback: string): Promise<string> {
+/** The directory Nephilex reports paths relative to. */
+async function reportRoot(report: NephilexReport, fallback: string): Promise<string> {
   const t = report.target;
   if (!t || !path.isAbsolute(t)) {
     return fallback;
@@ -70,7 +70,7 @@ export class ScanController implements vscode.Disposable {
   readonly onDidChangeBusy = this.busyChanged.event;
 
   constructor(
-    private readonly cli: ArgusCli,
+    private readonly cli: NephilexCli,
     private readonly store: FindingStore,
     private readonly log: vscode.LogOutputChannel,
     private readonly onCliProblem: (problem: CliProblem, explicit: boolean) => void,
@@ -88,7 +88,7 @@ export class ScanController implements vscode.Disposable {
     }
   }
 
-  /** Debounced scan of unsaved content (argus.run = onType). */
+  /** Debounced scan of unsaved content (nephilex.run = onType). */
   scheduleOnType(doc: vscode.TextDocument, delayMs: number): void {
     const key = doc.uri.toString();
     const existing = this.timers.get(key);
@@ -115,7 +115,7 @@ export class ScanController implements vscode.Disposable {
     this.inFlight.delete(key);
   }
 
-  private async prepare(settings: ArgusSettings, explicit: boolean): Promise<PreparedCli | undefined> {
+  private async prepare(settings: NephilexSettings, explicit: boolean): Promise<PreparedCli | undefined> {
     const prep = await this.cli.prepare(settings);
     if (!prep.ok) {
       this.onCliProblem(prep, explicit);
@@ -123,14 +123,14 @@ export class ScanController implements vscode.Disposable {
     }
     const { dropped } = sanitizeExtraArgs(settings.extraArgs);
     if (dropped.length) {
-      this.log.warn(`Ignoring managed flags in argus.extraArgs: ${dropped.join(' ')}`);
+      this.log.warn(`Ignoring managed flags in nephilex.extraArgs: ${dropped.join(' ')}`);
     }
     return prep.cli;
   }
 
   /**
-   * Scan one document. Saved files are passed by path to `argus check` when
-   * the CLI has it. Unsaved content, and every file when only `argus scan` is
+   * Scan one document. Saved files are passed by path to `nephilex check` when
+   * the CLI has it. Unsaved content, and every file when only `nephilex scan` is
    * available (which scans a file's whole directory), is written to a private
    * temporary directory first, so the CLI never receives content on its
    * command line.
@@ -138,7 +138,7 @@ export class ScanController implements vscode.Disposable {
   async scanDocument(doc: vscode.TextDocument, explicit: boolean): Promise<void> {
     if (doc.uri.scheme !== 'file' || doc.isClosed) {
       if (explicit) {
-        void vscode.window.showInformationMessage('Argus can only scan files on disk.');
+        void vscode.window.showInformationMessage('Nephilex can only scan files on disk.');
       }
       return;
     }
@@ -167,7 +167,7 @@ export class ScanController implements vscode.Disposable {
       let target = doc.uri.fsPath;
       let configPath: string | undefined;
       if (useTemp) {
-        tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'argus-vscode-'));
+        tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'nephilex-vscode-'));
         target = path.join(tmpDir, path.basename(doc.uri.fsPath));
         await fs.writeFile(target, text, { encoding: 'utf8', mode: 0o600, flag: 'wx' });
         configPath = await findConfig(folder?.uri.fsPath);
@@ -201,7 +201,7 @@ export class ScanController implements vscode.Disposable {
       this.log.info(`Scanned ${doc.uri.fsPath}: ${shown.length} finding(s) in ${result.durationMs} ms.`);
       if (explicit) {
         void vscode.window.setStatusBarMessage(
-          `Argus: ${shown.length} finding(s) in ${path.basename(doc.uri.fsPath)}`,
+          `Nephilex: ${shown.length} finding(s) in ${path.basename(doc.uri.fsPath)}`,
           5000,
         );
       }
@@ -221,7 +221,7 @@ export class ScanController implements vscode.Disposable {
   async scanWorkspace(): Promise<void> {
     const folders = (vscode.workspace.workspaceFolders ?? []).filter((f) => f.uri.scheme === 'file');
     if (folders.length === 0) {
-      void vscode.window.showInformationMessage('Open a folder to scan it with Argus.');
+      void vscode.window.showInformationMessage('Open a folder to scan it with Nephilex.');
       return;
     }
     const settings = readSettings();
@@ -235,7 +235,7 @@ export class ScanController implements vscode.Disposable {
     this.setBusy(1);
     try {
       await vscode.window.withProgress(
-        { location: vscode.ProgressLocation.Notification, title: 'Argus', cancellable: true },
+        { location: vscode.ProgressLocation.Notification, title: 'Nephilex', cancellable: true },
         async (progress, token) => {
           token.onCancellationRequested(() => abort.abort());
           let total = 0;
@@ -256,7 +256,7 @@ export class ScanController implements vscode.Disposable {
             }
           }
           if (!abort.signal.aborted) {
-            void vscode.window.showInformationMessage(`Argus found ${total} finding(s), ${high} critical or high.`);
+            void vscode.window.showInformationMessage(`Nephilex found ${total} finding(s), ${high} critical or high.`);
           }
         },
       );
@@ -270,7 +270,7 @@ export class ScanController implements vscode.Disposable {
 
   private async scanFolder(
     cli: PreparedCli,
-    settings: ArgusSettings,
+    settings: NephilexSettings,
     folder: string,
     signal: AbortSignal,
   ): Promise<Map<string, { uri: vscode.Uri; items: StoredFinding[] }> | undefined> {
@@ -283,7 +283,7 @@ export class ScanController implements vscode.Disposable {
       extraArgs: settings.extraArgs,
       supported: cli.caps.scanOptions,
     });
-    let report: ArgusReport;
+    let report: NephilexReport;
     let durationMs: number;
     try {
       const result = await this.cli.run(
@@ -302,7 +302,7 @@ export class ScanController implements vscode.Disposable {
     }
     const realFolder = await canonical(folder);
     const root = await reportRoot(report, realFolder);
-    const grouped = new Map<string, ArgusFinding[]>();
+    const grouped = new Map<string, NephilexFinding[]>();
     for (const f of report.findings) {
       if (!severityAtLeast(f.severity, settings.minSeverity)) {
         continue;
@@ -346,11 +346,11 @@ export class ScanController implements vscode.Disposable {
     return { lineCount: Number.MAX_SAFE_INTEGER, lineText: () => '' };
   }
 
-  private parse(stdout: string, stderr: string, exitCode: number | null): ArgusReport {
+  private parse(stdout: string, stderr: string, exitCode: number | null): NephilexReport {
     try {
       const report = parseReport(stdout);
       for (const e of report.errors) {
-        this.log.warn(`Argus reported: ${e}`);
+        this.log.warn(`Nephilex reported: ${e}`);
       }
       if (report.scannersFailed.length) {
         this.log.warn(`Scanners failed: ${report.scannersFailed.join(', ')}`);
@@ -378,11 +378,13 @@ export class ScanController implements vscode.Disposable {
       this.cli.invalidate();
     }
     if (explicit) {
-      void vscode.window.showErrorMessage(`Argus scan failed: ${message.split('\n')[0]}`, 'Show Log').then((choice) => {
-        if (choice) {
-          this.log.show(true);
-        }
-      });
+      void vscode.window
+        .showErrorMessage(`Nephilex scan failed: ${message.split('\n')[0]}`, 'Show Log')
+        .then((choice) => {
+          if (choice) {
+            this.log.show(true);
+          }
+        });
     }
   }
 

@@ -5,7 +5,7 @@
  *
  * Environment:
  *   VSCODE_TEST_VERSION     VS Code version to test (default: stable; CI also runs the engines minimum)
- *   ARGUS_TEST_EXECUTABLE   absolute path to an argus executable; enables the end-to-end tests
+ *   NEPHILEX_TEST_EXECUTABLE   absolute path to a nephilex executable; enables the end-to-end tests
  */
 import * as fs from 'node:fs';
 import * as os from 'node:os';
@@ -17,7 +17,7 @@ async function main(): Promise<void> {
   // example an editor terminal); it would make VS Code start as plain Node.
   delete process.env['ELECTRON_RUN_AS_NODE'];
   const root = path.resolve(__dirname, '..', '..', '..');
-  const workspace = fs.mkdtempSync(path.join(os.tmpdir(), 'argus-it-'));
+  const workspace = fs.mkdtempSync(path.join(os.tmpdir(), 'nephilex-it-'));
   fs.cpSync(path.join(root, 'test', 'fixtures', 'workspace'), workspace, { recursive: true });
   try {
     await runTests({
@@ -32,8 +32,8 @@ async function main(): Promise<void> {
         '--skip-release-notes',
       ],
       extensionTestsEnv: {
-        ARGUS_TEST_EXECUTABLE: process.env['ARGUS_TEST_EXECUTABLE'] ?? '',
-        ARGUS_TEST_WORKSPACE: workspace,
+        NEPHILEX_TEST_EXECUTABLE: process.env['NEPHILEX_TEST_EXECUTABLE'] ?? '',
+        NEPHILEX_TEST_WORKSPACE: workspace,
       },
     });
   } finally {

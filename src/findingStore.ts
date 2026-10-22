@@ -9,10 +9,10 @@ import {
   isInside,
   LineSource,
 } from './core/mapping';
-import { ArgusFinding } from './core/report';
+import { NephilexFinding } from './core/report';
 
 export interface StoredFinding {
-  finding: ArgusFinding;
+  finding: NephilexFinding;
   diagnostic: vscode.Diagnostic;
 }
 
@@ -31,7 +31,7 @@ export function textLines(text: string): LineSource {
   return { lineCount: lines.length, lineText: (i) => lines[i] ?? '' };
 }
 
-export function toDiagnostic(f: ArgusFinding, lines: LineSource): vscode.Diagnostic {
+export function toDiagnostic(f: NephilexFinding, lines: LineSource): vscode.Diagnostic {
   const r = computeRange(f.location, lines);
   const range = new vscode.Range(r.startLine, r.startCharacter, r.endLine, r.endCharacter);
   const d = new vscode.Diagnostic(range, diagnosticMessage(f), LEVELS[diagnosticLevel(f.severity)]);
@@ -40,14 +40,14 @@ export function toDiagnostic(f: ArgusFinding, lines: LineSource): vscode.Diagnos
   return d;
 }
 
-/** All Argus findings currently shown, keyed by file, mirrored into a DiagnosticCollection. */
+/** All Nephilex findings currently shown, keyed by file, mirrored into a DiagnosticCollection. */
 export class FindingStore implements vscode.Disposable {
   private readonly byUri = new Map<string, { uri: vscode.Uri; items: StoredFinding[] }>();
-  private readonly collection = vscode.languages.createDiagnosticCollection('argus');
+  private readonly collection = vscode.languages.createDiagnosticCollection('nephilex');
   private readonly changed = new vscode.EventEmitter<void>();
   readonly onDidChange = this.changed.event;
 
-  set(uri: vscode.Uri, findings: ArgusFinding[], lines: LineSource): void {
+  set(uri: vscode.Uri, findings: NephilexFinding[], lines: LineSource): void {
     this.setItems(
       uri,
       findings.map((finding) => ({ finding, diagnostic: toDiagnostic(finding, lines) })),
