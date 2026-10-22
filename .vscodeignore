@@ -1,4 +1,4 @@
-# Only dist/, package.json, README, CHANGELOG, LICENSE, and SECURITY ship.
+# Only dist/, package.json, README, CHANGELOG, LICENSE, SECURITY, and images ship.
 **
 !dist/extension.js
 !package.json
@@ -6,3 +6,4 @@
 !CHANGELOG.md
 !LICENSE
 !SECURITY.md
+!images/icon.png
