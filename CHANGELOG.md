@@ -10,7 +10,7 @@ All notable changes to this extension are documented here. The format follows
 
 ### Added
 
-- Diagnostics from the Argus CLI with severity mapping, rule id codes linking to the docs, and
+- Diagnostics from the Nephilex CLI with severity mapping, rule id codes linking to the docs, and
   CWE and OWASP in the message.
 - Scan on save, on type (debounced), or on demand; Scan Workspace and Scan Current File commands.
 - Hover with the reasoning, attacker perspective, impact, and fix guidance.

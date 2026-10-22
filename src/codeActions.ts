@@ -71,7 +71,7 @@ function isIgnoreArgs(v: unknown): v is IgnoreArgs {
 }
 
 /**
- * Prompt for a reason (required) and append an `nephilex-ignore` comment to the
+ * Prompt for a reason (required) and append a `nephilex-ignore` comment to the
  * finding's line. Where the language has no `#` or `//` comment, or the
  * finding is file-level, offer a `.nephilex.yml` allow entry instead.
  */

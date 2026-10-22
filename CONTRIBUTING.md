@@ -1,11 +1,11 @@
 # Contributing
 
-Thanks for helping improve the Argus extension. The general guidelines of the main project apply:
-<https://github.com/Argus-CodeSecurity/Argus-appsec/blob/main/CONTRIBUTING.md>
+Thanks for helping improve the Nephilex extension. The general guidelines of the main project apply:
+<https://github.com/nephilex/nephilex/blob/main/CONTRIBUTING.md>
 
 ## Setup
 
-Requirements: Node.js 22 and npm, plus the Argus CLI (`pip install argus-appsec`) for end-to-end
+Requirements: Node.js 22 and npm, plus the Nephilex CLI (`pip install nephilex`) for end-to-end
 tests.
 
 ```sh
@@ -26,7 +26,7 @@ npm run test:integration
 
 `test:integration` downloads a VS Code build with `@vscode/test-electron` into `.vscode-test/`.
 Set `VSCODE_TEST_VERSION` to test a specific version (CI tests the `engines.vscode` minimum and
-the current stable release) and `ARGUS_TEST_EXECUTABLE` to the absolute path of an `argus`
+the current stable release) and `NEPHILEX_TEST_EXECUTABLE` to the absolute path of a `nephilex`
 executable to run the end-to-end tests. On Linux, run it under `xvfb-run -a`.
 
 ## Code layout
@@ -40,7 +40,7 @@ executable to run the end-to-end tests. On Linux, run it under `xvfb-run -a`.
 
 - Spawn processes only through `src/core/process.ts`: argument arrays, no shell, bounded output
   and runtime. ESLint enforces this.
-- Treat everything in an Argus report as untrusted text.
+- Treat everything in a Nephilex report as untrusted text.
 - Use only stable `vscode` APIs; feature detect anything newer than `engines.vscode`.
 - Commits follow [Conventional Commits](https://www.conventionalcommits.org/), with an imperative
   subject of at most 72 characters, and are signed off (`git commit -s`) to certify the
