@@ -1,0 +1,227 @@
+{
+  "name": "argus-security",
+  "displayName": "Argus Security",
+  "description": "Security findings from the Argus scanner (SAST, secrets, dependencies, IaC) as diagnostics, hovers, and quick fixes.",
+  "version": "0.1.0",
+  "publisher": "argus-codesecurity",
+  "license": "Apache-2.0",
+  "homepage": "https://github.com/Argus-CodeSecurity/Argus-appsec",
+  "bugs": {
+    "url": "https://github.com/Argus-CodeSecurity/Argus-appsec/issues"
+  },
+  "engines": {
+    "vscode": "^1.93.0"
+  },
+  "categories": [
+    "Linters",
+    "Programming Languages"
+  ],
+  "keywords": [
+    "security",
+    "sast",
+    "secrets",
+    "appsec",
+    "argus"
+  ],
+  "main": "./dist/extension.js",
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "capabilities": {
+    "untrustedWorkspaces": {
+      "supported": "limited",
+      "description": "Argus does not run the scanner in Restricted Mode. Trust the workspace to enable scanning.",
+      "restrictedConfigurations": [
+        "argus.executablePath",
+        "argus.pythonPath",
+        "argus.extraArgs"
+      ]
+    },
+    "virtualWorkspaces": {
+      "supported": false,
+      "description": "Argus scans files on the local file system."
+    }
+  },
+  "contributes": {
+    "commands": [
+      {
+        "command": "argus.scanWorkspace",
+        "title": "Scan Workspace",
+        "category": "Argus"
+      },
+      {
+        "command": "argus.scanFile",
+        "title": "Scan Current File",
+        "category": "Argus"
+      },
+      {
+        "command": "argus.clearFindings",
+        "title": "Clear Findings",
+        "category": "Argus"
+      },
+      {
+        "command": "argus.showProblems",
+        "title": "Show Problems",
+        "category": "Argus"
+      },
+      {
+        "command": "argus.showLog",
+        "title": "Show Log",
+        "category": "Argus"
+      },
+      {
+        "command": "argus.ignoreFinding",
+        "title": "Ignore Finding with Reason",
+        "category": "Argus"
+      }
+    ],
+    "menus": {
+      "commandPalette": [
+        {
+          "command": "argus.ignoreFinding",
+          "when": "false"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "Argus Security",
+      "properties": {
+        "argus.run": {
+          "type": "string",
+          "enum": [
+            "off",
+            "onSave",
+            "onType"
+          ],
+          "enumDescriptions": [
+            "Only scan when a command is run.",
+            "Scan a file when it is saved.",
+            "Scan a file while typing, after a short pause (see argus.debounceMs)."
+          ],
+          "default": "onSave",
+          "description": "When to scan files automatically. Nothing runs automatically in Restricted Mode."
+        },
+        "argus.debounceMs": {
+          "type": "number",
+          "default": 800,
+          "minimum": 200,
+          "maximum": 10000,
+          "description": "Delay in milliseconds after the last edit before an on-type scan starts."
+        },
+        "argus.executablePath": {
+          "type": "string",
+          "default": "",
+          "scope": "machine",
+          "description": "Absolute path to the argus executable. Leave empty to search PATH. Ignored when argus.pythonPath is set."
+        },
+        "argus.pythonPath": {
+          "type": "string",
+          "default": "",
+          "scope": "machine",
+          "description": "Path to a Python interpreter that has argus-appsec installed. When set, Argus runs as `python -m argus`."
+        },
+        "argus.minSeverity": {
+          "type": "string",
+          "enum": [
+            "info",
+            "low",
+            "medium",
+            "high",
+            "critical"
+          ],
+          "default": "low",
+          "description": "Only show findings at or above this severity."
+        },
+        "argus.scanners": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_.-]+$"
+          },
+          "default": [],
+          "description": "Scanners to run (see `argus scanners`). Empty runs the CLI default set."
+        },
+        "argus.extraArgs": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [],
+          "description": "Extra arguments passed to the argus CLI, one argument per item. Output and format flags are managed by the extension and are dropped."
+        },
+        "argus.offlineEnrichment": {
+          "type": "boolean",
+          "default": true,
+          "description": "Pass --ai-provider heuristic --patches so hovers include offline reasoning and verified deterministic fixes. No network AI calls are made. When false, --no-ai is passed."
+        },
+        "argus.timeoutSeconds": {
+          "type": "number",
+          "default": 60,
+          "minimum": 5,
+          "maximum": 3600,
+          "description": "Fail-safe timeout for a single-file scan. The CLI process is killed when it is exceeded."
+        },
+        "argus.workspaceTimeoutSeconds": {
+          "type": "number",
+          "default": 900,
+          "minimum": 30,
+          "maximum": 21600,
+          "description": "Fail-safe timeout for a workspace scan. The CLI process is killed when it is exceeded."
+        },
+        "argus.maxOutputMB": {
+          "type": "number",
+          "default": 64,
+          "minimum": 1,
+          "maximum": 512,
+          "description": "Maximum size of CLI output read by the extension. The scan is aborted when it is exceeded."
+        },
+        "argus.mcp.enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Register the Argus MCP server (`argus mcp`) for agent mode when the editor supports the MCP server definition API."
+        }
+      }
+    },
+    "mcpServerDefinitionProviders": [
+      {
+        "id": "argus.mcpServer",
+        "label": "Argus Security"
+      }
+    ]
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run build:prod",
+    "build": "node esbuild.mjs",
+    "build:prod": "node esbuild.mjs --production",
+    "watch": "node esbuild.mjs --watch",
+    "typecheck": "tsc -p . --noEmit",
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "compile:tests": "tsc -p tsconfig.test.json",
+    "test:unit": "npm run compile:tests && mocha --config .mocharc.json",
+    "test:integration": "npm run build && npm run compile:tests && node out/test/integration/runTest.js",
+    "test": "npm run test:unit && npm run test:integration",
+    "package": "vsce package --allow-missing-repository"
+  },
+  "devDependencies": {
+    "@eslint/js": "10.0.1",
+    "@types/mocha": "10.0.10",
+    "@types/node": "20.19.25",
+    "@types/vscode": "1.93.0",
+    "@vscode/test-electron": "3.1.0",
+    "@vscode/vsce": "4.0.0",
+    "esbuild": "0.28.2",
+    "eslint": "10.13.0",
+    "eslint-config-prettier": "10.1.8",
+    "globals": "17.13.0",
+    "mocha": "11.8.0",
+    "prettier": "3.9.10",
+    "typescript": "5.9.3",
+    "typescript-eslint": "8.72.0"
+  },
+  "overrides": {
+    "diff": "8.0.4",
+    "serialize-javascript": "7.1.2"
+  }
+}

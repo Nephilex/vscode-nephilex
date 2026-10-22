@@ -1,0 +1,8 @@
+# Only dist/, package.json, README, CHANGELOG, LICENSE, and SECURITY ship.
+**
+!dist/extension.js
+!package.json
+!README.md
+!CHANGELOG.md
+!LICENSE
+!SECURITY.md
