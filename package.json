@@ -2,7 +2,7 @@
   "name": "nephilex",
   "displayName": "Nephilex",
   "description": "Application security for code, dependencies, secrets, infrastructure as code, and AI/LLM apps. Shows Nephilex scanner findings as diagnostics, hovers, and quick fixes.",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "publisher": "nephilex",
   "license": "Apache-2.0",
   "icon": "images/icon.png",

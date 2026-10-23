@@ -6,6 +6,14 @@ All notable changes to this extension are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.1.1]
+
+### Changed
+
+- The README states that the Nephilex CLI 0.10.0 or later is needed for "Apply Nephilex fix":
+  earlier versions do not attach fixes to `nephilex check`.
+- First release on Open VSX (Cursor, Windsurf, VSCodium) under the verified `nephilex` namespace.
+
 ## [0.1.0]
 
 ### Added
