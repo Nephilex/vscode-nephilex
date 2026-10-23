@@ -40,8 +40,8 @@ Screenshot placeholders (to be added with branding):
 
 ## Requirements
 
-- The Nephilex CLI: `pip install nephilex` (or `pipx install nephilex`). Tested with
-  CLI version 0.9.2.
+- The Nephilex CLI 0.10.0 or later: `pip install nephilex` (or `pipx install nephilex`).
+  Earlier versions do not attach fixes to `nephilex check`, so "Apply Nephilex fix" is not offered.
 - VS Code 1.93 or later, or a compatible editor (Cursor, Windsurf, VSCodium, and other forks).
 
 If the CLI is not found, the extension shows a message with an **Install Nephilex** link and the
