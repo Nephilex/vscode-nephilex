@@ -53,7 +53,7 @@ jobs:
         run: |
           python -m venv "$RUNNER_TEMP/nephilex-venv"
           if [ "$RUNNER_OS" = "Windows" ]; then bin="$RUNNER_TEMP/nephilex-venv/Scripts"; else bin="$RUNNER_TEMP/nephilex-venv/bin"; fi
-          "$bin/python" -m pip install --disable-pip-version-check nephilex
+          "$bin/python" -m pip install --disable-pip-version-check "nephilex>=0.10.0"
           echo "NEPHILEX_TEST_EXECUTABLE=$(cd "$bin" && pwd -W 2>/dev/null || pwd)/nephilex$([ "$RUNNER_OS" = "Windows" ] && echo .exe)" >> "$GITHUB_ENV"
       - run: npm ci
       - name: Integration tests (Linux)
