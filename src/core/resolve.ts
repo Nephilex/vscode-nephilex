@@ -130,6 +130,23 @@ function fromSetting(
   return check(searchPath(v, input), source, kind, input);
 }
 
+/**
+ * Find another program (pipx, python) on PATH with the same rules as the
+ * nephilex lookup, and stricter: PATH entries inside a workspace folder are
+ * skipped even in a trusted workspace, because these programs install
+ * software. Returns an absolute path, never a batch file.
+ */
+export function findOnPath(
+  name: string,
+  input: Omit<ResolveInput, 'executablePath' | 'pythonPath'>,
+): string | undefined {
+  const found = searchPath(name, { ...input, executablePath: '', pythonPath: '', trusted: false });
+  if (!found || (input.platform === 'win32' && isBatch(found))) {
+    return undefined;
+  }
+  return found;
+}
+
 export function resolveCli(input: ResolveInput): ResolveResult {
   if (input.pythonPath.trim()) {
     return fromSetting(input.pythonPath, 'nephilex.pythonPath', 'python', input);

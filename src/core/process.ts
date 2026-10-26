@@ -5,6 +5,7 @@
  */
 import { ChildProcess, spawn } from 'node:child_process';
 import * as path from 'node:path';
+import { StringDecoder } from 'node:string_decoder';
 
 export interface RunOptions {
   command: string;
@@ -14,6 +15,13 @@ export interface RunOptions {
   maxOutputBytes: number;
   env?: NodeJS.ProcessEnv;
   signal?: AbortSignal;
+  /**
+   * Receives output as it arrives (for showing it in a terminal). When set,
+   * stderr also counts toward maxOutputBytes, since all of it is shown.
+   */
+  onOutput?: (text: string, stream: 'stdout' | 'stderr') => void;
+  /** Program name used in timeout and size messages. Defaults to Nephilex. */
+  label?: string;
 }
 
 export interface RunResult {
@@ -96,8 +104,10 @@ export function runProcess(opts: RunOptions): Promise<RunResult> {
       return;
     }
 
+    const label = opts.label ?? 'Nephilex';
     const out: Buffer[] = [];
     let outBytes = 0;
+    const decoders = { stdout: new StringDecoder('utf8'), stderr: new StringDecoder('utf8') };
     let err = '';
     let settled = false;
 
@@ -116,23 +126,34 @@ export function runProcess(opts: RunOptions): Promise<RunResult> {
     };
     const onAbort = (): void => fail('cancelled', 'Cancelled.');
     const timer = setTimeout(
-      () => fail('timeout', `Nephilex did not finish within ${Math.round(opts.timeoutMs / 1000)} s and was stopped.`),
+      () => fail('timeout', `${label} did not finish within ${Math.round(opts.timeoutMs / 1000)} s and was stopped.`),
       opts.timeoutMs,
     );
     opts.signal?.addEventListener('abort', onAbort, { once: true });
 
+    const overLimit = (): void =>
+      fail(
+        'outputLimit',
+        `${label} output exceeded ${Math.round(opts.maxOutputBytes / (1024 * 1024))} MB and was stopped.`,
+      );
     child.stdout?.on('data', (chunk: Buffer) => {
       outBytes += chunk.length;
       if (outBytes > opts.maxOutputBytes) {
-        fail(
-          'outputLimit',
-          `Nephilex output exceeded ${Math.round(opts.maxOutputBytes / (1024 * 1024))} MB and was stopped.`,
-        );
+        overLimit();
         return;
       }
       out.push(chunk);
+      opts.onOutput?.(decoders.stdout.write(chunk), 'stdout');
     });
     child.stderr?.on('data', (chunk: Buffer) => {
+      if (opts.onOutput) {
+        outBytes += chunk.length;
+        if (outBytes > opts.maxOutputBytes) {
+          overLimit();
+          return;
+        }
+        opts.onOutput(decoders.stderr.write(chunk), 'stderr');
+      }
       err += chunk.toString('utf8');
       if (err.length > STDERR_LIMIT) {
         err = err.slice(err.length - STDERR_LIMIT);
