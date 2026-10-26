@@ -48,9 +48,14 @@ export interface InstallCommand {
 
 /**
  * `pipx install "nephilex[ast]"`, or `python -m pip install --user "nephilex[ast]"`
- * (no `--user` inside a virtual environment). Python starts with `-P` on
- * 3.11 and later, `-I` before that, so a module in the working directory
- * cannot stand in for pip.
+ * (no `--user` inside a virtual environment).
+ *
+ * Python 3.11 and later start with `-P`, so the working directory is not on
+ * `sys.path` and a module there cannot stand in for pip. On 3.10 the only
+ * equivalent is `-I`, which also disables the user site, and pip then
+ * refuses `--user`; so `-I` is used there only inside a virtual environment.
+ * The caller always runs the command from an extension-private working
+ * directory, which is what keeps workspace modules out in every case.
  */
 export function buildInstallCommand(method: InstallMethod): InstallCommand {
   if (!path.isAbsolute(method.program)) {
@@ -60,10 +65,11 @@ export function buildInstallCommand(method: InstallMethod): InstallCommand {
     return { program: method.program, args: ['install', NEPHILEX_REQUIREMENT] };
   }
   const { major, minor, venv } = method.python;
-  const safePath = major > 3 || (major === 3 && minor >= 11) ? '-P' : '-I';
+  const hasSafePath = major > 3 || (major === 3 && minor >= 11);
+  const isolation = hasSafePath ? ['-P'] : venv ? ['-I'] : [];
   return {
     program: method.program,
-    args: [safePath, '-m', 'pip', 'install', ...(venv ? [] : ['--user']), NEPHILEX_REQUIREMENT],
+    args: [...isolation, '-m', 'pip', 'install', ...(venv ? [] : ['--user']), NEPHILEX_REQUIREMENT],
   };
 }
 

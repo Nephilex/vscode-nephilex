@@ -199,6 +199,9 @@ class ProcessTerminal implements vscode.Pseudoterminal {
         this.onDone(r.exitCode);
       },
       (err: unknown) => {
+        if (err instanceof RunError && err.kind === 'cancelled') {
+          return; // The user closed the terminal.
+        }
         const message = err instanceof RunError ? err.message : String(err);
         this.write(`\n${message}\n`);
         this.onDone(null);
@@ -242,8 +245,9 @@ async function offerSetting(
   if (!prep.ok) {
     return false;
   }
+  const version = prep.cli.caps.version ? ` ${prep.cli.caps.version}` : '';
   const choice = await vscode.window.showInformationMessage(
-    `${message} Set nephilex.${key} in your user settings to use Nephilex ${prep.cli.caps.version || ''} from ${value}?`,
+    `${message} Set nephilex.${key} in your user settings to use Nephilex${version} from ${value}?`,
     'Use It',
     'Not Now',
   );

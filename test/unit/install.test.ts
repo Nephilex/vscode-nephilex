@@ -30,18 +30,19 @@ describe('install command', () => {
 
   it('installs with pip into the user site, with -P on Python 3.11 and later', () => {
     assert.deepEqual(buildInstallCommand(pip()).args, ['-P', '-m', 'pip', 'install', '--user', 'nephilex[ast]']);
-    assert.deepEqual(buildInstallCommand(pip({ minor: 10 })).args, [
+    // -I would disable the user site and pip would refuse --user.
+    assert.deepEqual(buildInstallCommand(pip({ minor: 10 })).args, ['-m', 'pip', 'install', '--user', 'nephilex[ast]']);
+  });
+
+  it('drops --user inside a virtual environment, isolating Python 3.10 with -I', () => {
+    assert.deepEqual(buildInstallCommand(pip({ venv: true })).args, ['-P', '-m', 'pip', 'install', 'nephilex[ast]']);
+    assert.deepEqual(buildInstallCommand(pip({ minor: 10, venv: true })).args, [
       '-I',
       '-m',
       'pip',
       'install',
-      '--user',
       'nephilex[ast]',
     ]);
-  });
-
-  it('drops --user inside a virtual environment', () => {
-    assert.deepEqual(buildInstallCommand(pip({ venv: true })).args, ['-P', '-m', 'pip', 'install', 'nephilex[ast]']);
   });
 
   it('returns an argument array, never a shell string', () => {
