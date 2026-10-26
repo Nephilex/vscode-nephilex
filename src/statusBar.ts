@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
 import { Commands } from './constants';
+import { countsSentence, severityCounts, statusSummary } from './core/tree';
 import { FindingStore } from './findingStore';
 
 export type CliState = 'unknown' | 'ready' | 'missing' | 'untrusted';
@@ -27,7 +28,7 @@ export class NephilexStatusBar implements vscode.Disposable {
 
   update(): void {
     const n = this.store.countCriticalHigh();
-    const total = this.store.total();
+    const counts = severityCounts(this.store.entries().flatMap((e) => e.items.map((i) => i.finding)));
     this.item.backgroundColor = undefined;
     if (this.cli === 'untrusted') {
       this.item.text = '$(shield) Nephilex: restricted';
@@ -41,9 +42,14 @@ export class NephilexStatusBar implements vscode.Disposable {
       this.item.command = Commands.installHelp;
       return;
     }
-    this.item.text = `${this.busy ? '$(sync~spin)' : '$(shield)'} Nephilex: ${n}`;
-    this.item.tooltip = `${n} critical or high finding(s), ${total} in total. Click to open the Problems view.`;
-    this.item.command = Commands.showProblems;
+    if (this.busy) {
+      this.item.text = '$(sync~spin) Nephilex: scanning';
+      this.item.tooltip = 'Nephilex is scanning. Click to show the findings.';
+    } else {
+      this.item.text = `$(shield) Nephilex: ${statusSummary(counts)}`;
+      this.item.tooltip = `Nephilex: ${countsSentence(counts)}. Click to show the findings.`;
+    }
+    this.item.command = Commands.showFindings;
     if (n > 0) {
       this.item.backgroundColor = new vscode.ThemeColor('statusBarItem.errorBackground');
     }
