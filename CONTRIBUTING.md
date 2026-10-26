@@ -31,10 +31,18 @@ executable to run the end-to-end tests. On Linux, run it under `xvfb-run -a`.
 
 ## Code layout
 
-- `src/core/`: code with no `vscode` dependency (report parsing, mapping, fixes, CLI arguments,
-  executable resolution, process handling). Unit tested in plain Node.
-- `src/*.ts`: editor integration (diagnostics, hover, code actions, status bar, MCP).
+- `src/core/`: code with no `vscode` dependency (report and evidence parsing, mapping, fixes, CLI
+  arguments, the Findings view model, install commands, HTML report preparation, executable
+  resolution, process handling). Unit tested in plain Node.
+- `src/*.ts`: editor integration (diagnostics, hover, code actions, Findings view, install flow,
+  HTML report, status bar, MCP).
+- `walkthrough/`: Markdown pages of the getting started walkthrough. They ship with the
+  extension and must not load remote content.
 - `test/unit/`: mocha unit tests. `test/integration/`: tests that run inside VS Code.
+- `test/fixtures/report-scan.json` is CLI output without evidence (0.11.0 and older);
+  `test/fixtures/report-evidence.json` is output with evidence, from the CLI development tree for
+  `test/fixtures/workspace`. Regenerate fixtures from real CLI runs; do not edit them by hand
+  beyond replacing local paths.
 
 ## Rules
 
@@ -46,3 +54,11 @@ executable to run the end-to-end tests. On Linux, run it under `xvfb-run -a`.
   subject of at most 72 characters, and are signed off (`git commit -s`) to certify the
   [Developer Certificate of Origin](https://developercertificate.org/).
 - No em or en dashes, emoji, or decorative Unicode in code, UI strings, or docs.
+- No telemetry, and no new runtime dependencies without a strong reason.
+
+## Screenshots (TODO before publishing)
+
+The README lists the screenshots the store page needs. They must be captured by hand from a real
+editor session running a released CLI against a sample project, then added under `images/` and
+referenced from the README (add them to the `.vscodeignore` allow list). Do not use mock-ups,
+generated images, or edited captures that show UI or results the extension does not produce.
