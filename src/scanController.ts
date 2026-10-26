@@ -4,10 +4,11 @@ import * as path from 'node:path';
 import * as vscode from 'vscode';
 import { NephilexCli, PrepareResult, PreparedCli } from './nephilexCli';
 import { buildScanArgs, sanitizeExtraArgs } from './core/cli';
+import { resolveStepPath, StepPathContext } from './core/evidence';
 import { isInside, resolveFindingPath, samePath, severityAtLeast } from './core/mapping';
 import { RunError } from './core/process';
 import { NephilexFinding, NephilexReport, parseReport, ReportParseError } from './core/report';
-import { documentLines, FindingStore, StoredFinding, textLines, toDiagnostic } from './findingStore';
+import { documentLines, FindingStore, StepResolver, StoredFinding, textLines, toDiagnostic } from './findingStore';
 import { NephilexSettings, readSettings } from './settings';
 
 export type CliProblem = Extract<PrepareResult, { ok: false }>;
@@ -197,7 +198,23 @@ export class ScanController implements vscode.Disposable {
       if (abort.signal.aborted || doc.isClosed) {
         return;
       }
-      this.store.set(doc.uri, shown, documentLines(doc));
+      // Evidence steps may point at other files of the workspace folder, but
+      // only when the file was scanned in place: a temporary copy has no
+      // neighbours worth linking.
+      const realFolder = !useTemp && folder?.uri.scheme === 'file' ? await canonical(folder.uri.fsPath) : undefined;
+      const stepCtx: StepPathContext = {
+        roots: [root, realCwd],
+        file: { real: realTarget, local: doc.uri.fsPath },
+        folder: realFolder && folder ? { real: realFolder, local: folder.uri.fsPath } : undefined,
+      };
+      const resolveStep: StepResolver = (p) => {
+        const local = resolveStepPath(p, stepCtx);
+        if (!local) {
+          return undefined;
+        }
+        return samePath(local, doc.uri.fsPath) ? doc.uri : vscode.Uri.file(local);
+      };
+      this.store.set(doc.uri, shown, documentLines(doc), resolveStep);
       this.log.info(`Scanned ${doc.uri.fsPath}: ${shown.length} finding(s) in ${result.durationMs} ms.`);
       if (explicit) {
         void vscode.window.setStatusBarMessage(
@@ -317,13 +334,18 @@ export class ScanController implements vscode.Disposable {
       list.push(f);
       grouped.set(local, list);
     }
+    const stepCtx: StepPathContext = { roots: [root], folder: { real: realFolder, local: folder } };
+    const resolveStep: StepResolver = (p) => {
+      const local = resolveStepPath(p, stepCtx);
+      return local ? vscode.Uri.file(local) : undefined;
+    };
     const results = new Map<string, { uri: vscode.Uri; items: StoredFinding[] }>();
     for (const [abs, findings] of grouped) {
       const uri = vscode.Uri.file(abs);
       const lines = await this.linesFor(uri);
       results.set(uri.toString(), {
         uri,
-        items: findings.map((finding) => ({ finding, diagnostic: toDiagnostic(finding, lines) })),
+        items: findings.map((finding) => ({ finding, diagnostic: toDiagnostic(finding, lines, uri, resolveStep) })),
       });
     }
     this.log.info(`Scanned ${folder}: ${report.findings.length} finding(s) in ${durationMs} ms.`);

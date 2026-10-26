@@ -1,4 +1,5 @@
 import * as vscode from 'vscode';
+import { evidenceHoverParts } from './core/evidence';
 import { hasVerifiedFix } from './core/fix';
 import { docsUrl, safeHttpsUrl } from './core/mapping';
 import { NephilexFinding, severityName } from './core/report';
@@ -37,6 +38,16 @@ export function findingHover(f: NephilexFinding): vscode.MarkdownString {
   md.appendMarkdown('**\n\n');
   const tax = [severityName(f.severity).toUpperCase(), f.ruleId, ...f.cwe, ...f.owasp];
   md.appendText(tax.join(' | '));
+
+  // Evidence (CLI 0.12.0 and later): grade, data-flow path, and verification
+  // steps. Report text arrives as `text` parts and is escaped like the rest.
+  for (const part of evidenceHoverParts(f.evidence)) {
+    if ('markdown' in part) {
+      md.appendMarkdown(part.markdown);
+    } else {
+      md.appendText(part.text);
+    }
+  }
 
   const why = f.whyVulnerable || f.description;
   if (why) {
