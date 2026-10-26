@@ -132,6 +132,11 @@ export class FindingStore implements vscode.Disposable {
     this.changed.fire();
   }
 
+  /** Every file that has findings. */
+  entries(): readonly { uri: vscode.Uri; items: readonly StoredFinding[] }[] {
+    return [...this.byUri.values()];
+  }
+
   get(uri: vscode.Uri): readonly StoredFinding[] {
     return this.byUri.get(uri.toString())?.items ?? [];
   }
