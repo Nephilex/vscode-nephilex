@@ -49,6 +49,27 @@ describe('runProcess', () => {
     );
   });
 
+  it('streams output and caps stderr too when streaming', async () => {
+    const seen: string[] = [];
+    const r = await runProcess({
+      ...base,
+      args: ['-e', 'process.stdout.write("out"); process.stderr.write("err")'],
+      onOutput: (text, stream) => seen.push(`${stream}:${text}`),
+    });
+    assert.equal(r.exitCode, 0);
+    assert.deepEqual(seen.sort(), ['stderr:err', 'stdout:out']);
+    await assert.rejects(
+      runProcess({
+        ...base,
+        maxOutputBytes: 1000,
+        label: 'pip',
+        args: ['-e', 'setInterval(() => process.stderr.write("x".repeat(500)), 1)'],
+        onOutput: () => undefined,
+      }),
+      (e: unknown) => e instanceof RunError && e.kind === 'outputLimit' && e.message.startsWith('pip '),
+    );
+  });
+
   it('returns stderr and a non-zero exit code', async () => {
     const r = await runProcess({ ...base, args: ['-e', 'console.error("boom"); process.exit(3)'] });
     assert.equal(r.exitCode, 3);

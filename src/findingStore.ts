@@ -9,6 +9,7 @@ import {
   isInside,
   LineSource,
 } from './core/mapping';
+import { relatedSteps } from './core/evidence';
 import { NephilexFinding } from './core/report';
 
 export interface StoredFinding {
@@ -31,12 +32,60 @@ export function textLines(text: string): LineSource {
   return { lineCount: lines.length, lineText: (i) => lines[i] ?? '' };
 }
 
-export function toDiagnostic(f: NephilexFinding, lines: LineSource): vscode.Diagnostic {
+/**
+ * Maps an evidence step path (as reported) to a file the editor may open, or
+ * undefined to leave the step out. See `resolveStepPath` in core/evidence.ts.
+ */
+export type StepResolver = (stepPath: string) => vscode.Uri | undefined;
+
+/**
+ * Evidence path steps as related information, so the Problems panel shows
+ * the trace with clickable steps. Steps in the finding's own file use its
+ * line text for the range; other files get a position at the reported column.
+ */
+function relatedInformation(
+  f: NephilexFinding,
+  lines: LineSource,
+  self: vscode.Uri | undefined,
+  resolve: StepResolver | undefined,
+): vscode.DiagnosticRelatedInformation[] {
+  if (!resolve) {
+    return [];
+  }
+  const out: vscode.DiagnosticRelatedInformation[] = [];
+  for (const step of relatedSteps(f.evidence, f.location.startLine)) {
+    const uri = resolve(step.path);
+    if (!uri) {
+      continue;
+    }
+    let range: vscode.Range;
+    if (self && uri.toString() === self.toString()) {
+      const r = computeRange({ path: step.path, startLine: step.line, startColumn: step.column }, lines);
+      range = new vscode.Range(r.startLine, r.startCharacter, r.endLine, r.endCharacter);
+    } else {
+      const pos = new vscode.Position(step.line - 1, (step.column ?? 1) - 1);
+      range = new vscode.Range(pos, pos);
+    }
+    out.push(new vscode.DiagnosticRelatedInformation(new vscode.Location(uri, range), step.message));
+  }
+  return out;
+}
+
+export function toDiagnostic(
+  f: NephilexFinding,
+  lines: LineSource,
+  self?: vscode.Uri,
+  resolveStep?: StepResolver,
+): vscode.Diagnostic {
   const r = computeRange(f.location, lines);
   const range = new vscode.Range(r.startLine, r.startCharacter, r.endLine, r.endCharacter);
   const d = new vscode.Diagnostic(range, diagnosticMessage(f), LEVELS[diagnosticLevel(f.severity)]);
   d.source = DIAGNOSTIC_SOURCE;
   d.code = { value: f.ruleId, target: vscode.Uri.parse(docsUrl(f), true) };
+  const related = relatedInformation(f, lines, self, resolveStep);
+  if (related.length) {
+    d.relatedInformation = related;
+  }
   return d;
 }
 
@@ -47,10 +96,10 @@ export class FindingStore implements vscode.Disposable {
   private readonly changed = new vscode.EventEmitter<void>();
   readonly onDidChange = this.changed.event;
 
-  set(uri: vscode.Uri, findings: NephilexFinding[], lines: LineSource): void {
+  set(uri: vscode.Uri, findings: NephilexFinding[], lines: LineSource, resolveStep?: StepResolver): void {
     this.setItems(
       uri,
-      findings.map((finding) => ({ finding, diagnostic: toDiagnostic(finding, lines) })),
+      findings.map((finding) => ({ finding, diagnostic: toDiagnostic(finding, lines, uri, resolveStep) })),
     );
     this.changed.fire();
   }
@@ -81,6 +130,11 @@ export class FindingStore implements vscode.Disposable {
       this.setItems(entry.uri, entry.items);
     }
     this.changed.fire();
+  }
+
+  /** Every file that has findings. */
+  entries(): readonly { uri: vscode.Uri; items: readonly StoredFinding[] }[] {
+    return [...this.byUri.values()];
   }
 
   get(uri: vscode.Uri): readonly StoredFinding[] {

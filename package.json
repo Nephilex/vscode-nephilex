@@ -1,8 +1,8 @@
 {
   "name": "nephilex",
   "displayName": "Nephilex",
-  "description": "Application security for code, dependencies, secrets, infrastructure as code, and AI/LLM apps. Shows Nephilex scanner findings as diagnostics, hovers, and quick fixes.",
-  "version": "0.1.1",
+  "description": "Open-source application security scanner for code, dependencies, secrets, infrastructure as code, and AI/LLM apps. Shows Nephilex findings with their evidence as diagnostics, hovers, a Findings view, and quick fixes.",
+  "version": "0.2.0",
   "publisher": "nephilex",
   "license": "Apache-2.0",
   "icon": "images/icon.png",
@@ -23,16 +23,24 @@
   },
   "categories": [
     "Linters",
-    "Programming Languages"
+    "Testing",
+    "Other"
   ],
   "keywords": [
     "security",
     "sast",
-    "secrets",
     "appsec",
-    "iac",
+    "devsecops",
+    "vulnerability",
+    "taint analysis",
+    "secrets",
     "dependencies",
+    "sca",
+    "iac",
+    "owasp",
+    "cwe",
     "llm",
+    "mcp",
     "nephilex"
   ],
   "main": "./dist/extension.js",
@@ -59,21 +67,73 @@
       {
         "command": "nephilex.scanWorkspace",
         "title": "Scan Workspace",
-        "category": "Nephilex"
+        "category": "Nephilex",
+        "icon": "$(run-all)"
       },
       {
         "command": "nephilex.scanFile",
         "title": "Scan Current File",
+        "category": "Nephilex",
+        "icon": "$(shield)"
+      },
+      {
+        "command": "nephilex.scanResource",
+        "title": "Scan with Nephilex",
         "category": "Nephilex"
+      },
+      {
+        "command": "nephilex.refresh",
+        "title": "Refresh (Run the Last Scan Again)",
+        "category": "Nephilex",
+        "icon": "$(refresh)"
       },
       {
         "command": "nephilex.clearFindings",
         "title": "Clear Findings",
+        "category": "Nephilex",
+        "icon": "$(clear-all)"
+      },
+      {
+        "command": "nephilex.filterFindings",
+        "title": "Filter Findings...",
+        "category": "Nephilex",
+        "icon": "$(filter)"
+      },
+      {
+        "command": "nephilex.resetFilter",
+        "title": "Reset Filter",
+        "category": "Nephilex"
+      },
+      {
+        "command": "nephilex.groupBySeverity",
+        "title": "Group by Severity",
+        "category": "Nephilex",
+        "icon": "$(list-tree)"
+      },
+      {
+        "command": "nephilex.groupByFile",
+        "title": "Group by File",
+        "category": "Nephilex",
+        "icon": "$(files)"
+      },
+      {
+        "command": "nephilex.showFindings",
+        "title": "Show Findings",
         "category": "Nephilex"
       },
       {
         "command": "nephilex.showProblems",
         "title": "Show Problems",
+        "category": "Nephilex"
+      },
+      {
+        "command": "nephilex.openHtmlReport",
+        "title": "Open HTML Report",
+        "category": "Nephilex"
+      },
+      {
+        "command": "nephilex.installCli",
+        "title": "Install Nephilex CLI",
         "category": "Nephilex"
       },
       {
@@ -85,6 +145,26 @@
         "command": "nephilex.ignoreFinding",
         "title": "Ignore Finding with Reason",
         "category": "Nephilex"
+      },
+      {
+        "command": "nephilex.openFinding",
+        "title": "Open",
+        "category": "Nephilex"
+      },
+      {
+        "command": "nephilex.ignoreFromView",
+        "title": "Ignore with Reason...",
+        "category": "Nephilex"
+      },
+      {
+        "command": "nephilex.copyRuleId",
+        "title": "Copy Rule ID",
+        "category": "Nephilex"
+      },
+      {
+        "command": "nephilex.openRuleDocs",
+        "title": "Open Rule Documentation",
+        "category": "Nephilex"
       }
     ],
     "menus": {
@@ -92,6 +172,131 @@
         {
           "command": "nephilex.ignoreFinding",
           "when": "false"
+        },
+        {
+          "command": "nephilex.scanResource",
+          "when": "false"
+        },
+        {
+          "command": "nephilex.openFinding",
+          "when": "false"
+        },
+        {
+          "command": "nephilex.ignoreFromView",
+          "when": "false"
+        },
+        {
+          "command": "nephilex.copyRuleId",
+          "when": "false"
+        },
+        {
+          "command": "nephilex.openRuleDocs",
+          "when": "false"
+        },
+        {
+          "command": "nephilex.resetFilter",
+          "when": "nephilex.filtered"
+        },
+        {
+          "command": "nephilex.groupBySeverity",
+          "when": "nephilex.groupBy == file"
+        },
+        {
+          "command": "nephilex.groupByFile",
+          "when": "nephilex.groupBy != file"
+        }
+      ],
+      "view/title": [
+        {
+          "command": "nephilex.scanWorkspace",
+          "when": "view == nephilex.findings",
+          "group": "navigation@1"
+        },
+        {
+          "command": "nephilex.refresh",
+          "when": "view == nephilex.findings",
+          "group": "navigation@2"
+        },
+        {
+          "command": "nephilex.filterFindings",
+          "when": "view == nephilex.findings",
+          "group": "navigation@3"
+        },
+        {
+          "command": "nephilex.groupByFile",
+          "when": "view == nephilex.findings && nephilex.groupBy != file",
+          "group": "navigation@4"
+        },
+        {
+          "command": "nephilex.groupBySeverity",
+          "when": "view == nephilex.findings && nephilex.groupBy == file",
+          "group": "navigation@4"
+        },
+        {
+          "command": "nephilex.clearFindings",
+          "when": "view == nephilex.findings",
+          "group": "navigation@5"
+        },
+        {
+          "command": "nephilex.openHtmlReport",
+          "when": "view == nephilex.findings",
+          "group": "1_report@1"
+        },
+        {
+          "command": "nephilex.resetFilter",
+          "when": "view == nephilex.findings && nephilex.filtered",
+          "group": "2_view@1"
+        },
+        {
+          "command": "nephilex.showProblems",
+          "when": "view == nephilex.findings",
+          "group": "2_view@2"
+        },
+        {
+          "command": "nephilex.installCli",
+          "when": "view == nephilex.findings",
+          "group": "3_setup@1"
+        },
+        {
+          "command": "nephilex.showLog",
+          "when": "view == nephilex.findings",
+          "group": "3_setup@2"
+        }
+      ],
+      "view/item/context": [
+        {
+          "command": "nephilex.openFinding",
+          "when": "view == nephilex.findings && viewItem == nephilex.finding",
+          "group": "navigation@1"
+        },
+        {
+          "command": "nephilex.ignoreFromView",
+          "when": "view == nephilex.findings && viewItem == nephilex.finding",
+          "group": "1_triage@1"
+        },
+        {
+          "command": "nephilex.copyRuleId",
+          "when": "view == nephilex.findings && viewItem == nephilex.finding",
+          "group": "2_rule@1"
+        },
+        {
+          "command": "nephilex.openRuleDocs",
+          "when": "view == nephilex.findings && viewItem == nephilex.finding",
+          "group": "2_rule@2"
+        }
+      ],
+      "explorer/context": [
+        {
+          "command": "nephilex.scanResource",
+          "when": "isWorkspaceTrusted && resourceScheme == file",
+          "group": "4_search@9"
+        }
+      ],
+      "editor/title": [
+        {
+          "command": "nephilex.scanFile",
+          "when": "isWorkspaceTrusted && resourceScheme == file && config.nephilex.showScanButton",
+          "group": "navigation@90"
         }
       ]
     },
@@ -191,6 +396,11 @@
           "type": "boolean",
           "default": true,
           "description": "Register the Nephilex MCP server (`nephilex mcp`) for agent mode when the editor supports the MCP server definition API."
+        },
+        "nephilex.showScanButton": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show the Scan Current File button (shield icon) in the editor title bar."
         }
       }
     },
@@ -198,6 +408,117 @@
       {
         "id": "nephilex",
         "label": "nephilex"
+      }
+    ],
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "nephilex",
+          "title": "Nephilex",
+          "icon": "images/activitybar.svg"
+        }
+      ]
+    },
+    "views": {
+      "nephilex": [
+        {
+          "id": "nephilex.findings",
+          "name": "Findings",
+          "contextualTitle": "Nephilex"
+        }
+      ]
+    },
+    "viewsWelcome": [
+      {
+        "view": "nephilex.findings",
+        "when": "nephilex.cliState == untrusted",
+        "contents": "Nephilex does not run in Restricted Mode, so nothing in this workspace is scanned.\n[Manage Workspace Trust](command:workbench.trust.manage)"
+      },
+      {
+        "view": "nephilex.findings",
+        "when": "nephilex.cliState == missing",
+        "contents": "The Nephilex CLI was not found. The extension runs the open-source nephilex scanner on your machine; it needs Python 3.10 or later, or pipx.\n[Install Nephilex](command:nephilex.installCli)\nAlready installed somewhere else? Set nephilex.executablePath or nephilex.pythonPath in [Settings](command:workbench.action.openSettings?%22nephilex%22)."
+      },
+      {
+        "view": "nephilex.findings",
+        "when": "nephilex.cliState != untrusted && nephilex.cliState != missing && !nephilex.hasFindings && !nephilex.scanned",
+        "contents": "No scan has run yet. Scan the workspace to see findings grouped by severity, with the evidence for each one.\n[Scan Workspace](command:nephilex.scanWorkspace)\nNephilex needs its command line tool. If it is not installed yet:\n[Install Nephilex](command:nephilex.installCli)\nNew to Nephilex? Open the [getting started walkthrough](command:workbench.action.openWalkthrough?%22nephilex.nephilex%23nephilex.gettingStarted%22)."
+      },
+      {
+        "view": "nephilex.findings",
+        "when": "nephilex.cliState != untrusted && nephilex.cliState != missing && !nephilex.hasFindings && nephilex.scanned",
+        "contents": "The last scan reported no findings at or above nephilex.minSeverity. No scanner finds every issue, so keep reviewing code and dependencies.\n[Scan Workspace](command:nephilex.scanWorkspace)"
+      },
+      {
+        "view": "nephilex.findings",
+        "when": "nephilex.hasFindings",
+        "contents": "All findings are hidden by the current filter.\n[Reset Filter](command:nephilex.resetFilter)"
+      }
+    ],
+    "walkthroughs": [
+      {
+        "id": "nephilex.gettingStarted",
+        "title": "Get Started with Nephilex",
+        "description": "Install the open-source Nephilex scanner, run a first scan, read the evidence for a finding, and add Nephilex to CI.",
+        "steps": [
+          {
+            "id": "install",
+            "title": "Install the Nephilex CLI",
+            "description": "The extension runs the nephilex command line tool on your machine. Install it with pipx or pip; you confirm the command before anything runs.\n[Install Nephilex](command:nephilex.installCli)",
+            "media": {
+              "markdown": "walkthrough/install.md"
+            },
+            "completionEvents": [
+              "onContext:nephilex.cliState == ready"
+            ]
+          },
+          {
+            "id": "scan",
+            "title": "Run a first scan",
+            "description": "Scan the whole workspace, or right-click a folder or file in the Explorer and choose Scan with Nephilex.\n[Scan Workspace](command:nephilex.scanWorkspace)",
+            "media": {
+              "markdown": "walkthrough/scan.md"
+            },
+            "completionEvents": [
+              "onContext:nephilex.scanned"
+            ]
+          },
+          {
+            "id": "evidence",
+            "title": "Read a finding and its evidence",
+            "description": "Open a finding from the Findings view and hover over it to see the evidence grade, the data-flow path, and how to verify it.\n[Show Findings](command:nephilex.showFindings)",
+            "media": {
+              "markdown": "walkthrough/evidence.md"
+            },
+            "completionEvents": [
+              "onCommand:nephilex.openFinding",
+              "onView:nephilex.findings"
+            ]
+          },
+          {
+            "id": "ignore",
+            "title": "Ignore a false positive with a reason",
+            "description": "Suppress a finding you have checked, with a reason that stays next to the code for reviewers.",
+            "media": {
+              "markdown": "walkthrough/ignore.md"
+            },
+            "completionEvents": [
+              "onCommand:nephilex.ignoreFinding",
+              "onCommand:nephilex.ignoreFromView"
+            ]
+          },
+          {
+            "id": "ci",
+            "title": "Set up CI",
+            "description": "Run the same scan on every pull request.\n[Open the CI/CD guide](https://nephilex.github.io/nephilex/ci-cd/)",
+            "media": {
+              "markdown": "walkthrough/ci.md"
+            },
+            "completionEvents": [
+              "onLink:https://nephilex.github.io/nephilex/ci-cd/"
+            ]
+          }
+        ]
       }
     ]
   },

@@ -33,8 +33,9 @@ function oneLine(s: string): string {
 }
 
 /**
- * Diagnostic message: the title followed by the CWE and OWASP mappings, e.g.
- * `Unsafe yaml.load without SafeLoader (CWE-502; OWASP A08:2021-Software ...)`.
+ * Diagnostic message: the evidence grade when the CLI reports one, the title,
+ * then the CWE and OWASP mappings, e.g.
+ * `[likely] Unsafe yaml.load without SafeLoader (CWE-502; OWASP A08:2021-Software ...)`.
  */
 export function diagnosticMessage(f: NephilexFinding): string {
   const parts: string[] = [];
@@ -44,7 +45,8 @@ export function diagnosticMessage(f: NephilexFinding): string {
   if (f.owasp.length) {
     parts.push('OWASP ' + f.owasp.map(oneLine).join(', '));
   }
-  const title = oneLine(f.title);
+  const grade = f.evidence?.grade ? `[${f.evidence.grade}] ` : '';
+  const title = grade + oneLine(f.title);
   return parts.length ? `${title} (${parts.join('; ')})` : title;
 }
 

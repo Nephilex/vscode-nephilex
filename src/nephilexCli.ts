@@ -26,7 +26,7 @@ export type PrepareResult =
 const PROBE_TIMEOUT_MS = 30_000;
 const PROBE_MAX_BYTES = 1024 * 1024;
 
-function isExecutableFile(p: string): boolean {
+export function isExecutableFile(p: string): boolean {
   try {
     if (!fs.statSync(p).isFile()) {
       return false;
@@ -40,7 +40,7 @@ function isExecutableFile(p: string): boolean {
   }
 }
 
-function workspaceFolderPaths(): string[] {
+export function workspaceFolderPaths(): string[] {
   return (vscode.workspace.workspaceFolders ?? []).filter((f) => f.uri.scheme === 'file').map((f) => f.uri.fsPath);
 }
 

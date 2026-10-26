@@ -2,19 +2,29 @@ import * as fs from 'node:fs';
 import * as vscode from 'vscode';
 import { NephilexCli } from './nephilexCli';
 import { NephilexCodeActionProvider, ignoreFinding } from './codeActions';
-import { Commands, CONFIG_SECTION, INSTALL_COMMAND, INSTALL_URL } from './constants';
+import { Commands, CONFIG_SECTION, ContextKeys, FINDINGS_VIEW, INSTALL_COMMAND } from './constants';
 import { FindingStore } from './findingStore';
+import { copyRuleId, FindingsView, ignoreFromView, openFinding, openRuleDocs } from './findingsView';
 import { NephilexHoverProvider } from './hover';
+import { openHtmlReport } from './htmlReport';
+import { installCli } from './install';
 import { registerMcpProvider } from './mcp';
 import { CliProblem, ScanController } from './scanController';
 import { readSettings } from './settings';
-import { NephilexStatusBar, showProblems } from './statusBar';
+import { CliState, NephilexStatusBar, showProblems } from './statusBar';
 
 const FILE_SELECTOR: vscode.DocumentSelector = { scheme: 'file' };
 
 export interface NephilexApi {
   /** For tests: the finding store backing diagnostics. */
   readonly store: FindingStore;
+}
+
+function asUris(v: unknown): vscode.Uri[] {
+  if (v instanceof vscode.Uri) {
+    return [v];
+  }
+  return Array.isArray(v) ? v.filter((u): u is vscode.Uri => u instanceof vscode.Uri) : [];
 }
 
 export function activate(context: vscode.ExtensionContext): NephilexApi {
@@ -25,17 +35,26 @@ export function activate(context: vscode.ExtensionContext): NephilexApi {
   const cli = new NephilexCli(log, safeCwd);
   const store = new FindingStore();
   const status = new NephilexStatusBar(store);
+  const view = new FindingsView(store, context.workspaceState);
   let missingShown = false;
+
+  /** One place for the CLI state: status bar, welcome content, and walkthrough. */
+  const setCliState = (state: CliState): void => {
+    status.setCliState(state);
+    void vscode.commands.executeCommand('setContext', ContextKeys.cliState, state);
+  };
+
+  const installDeps = { cli, log, safeCwd, onReady: () => setCliState('ready') };
 
   const showInstallHelp = async (message: string): Promise<void> => {
     const choice = await vscode.window.showErrorMessage(
-      `${message} Install it with "${INSTALL_COMMAND}", or set nephilex.executablePath or nephilex.pythonPath.`,
+      `${message} Install it, or set nephilex.executablePath or nephilex.pythonPath.`,
       'Install Nephilex',
       'Copy Install Command',
       'Open Settings',
     );
     if (choice === 'Install Nephilex') {
-      await vscode.env.openExternal(vscode.Uri.parse(INSTALL_URL));
+      await installCli(installDeps);
     } else if (choice === 'Copy Install Command') {
       await vscode.env.clipboard.writeText(INSTALL_COMMAND);
     } else if (choice === 'Open Settings') {
@@ -45,7 +64,7 @@ export function activate(context: vscode.ExtensionContext): NephilexApi {
 
   const onCliProblem = (problem: CliProblem, explicit: boolean): void => {
     if (problem.reason === 'untrusted') {
-      status.setCliState('untrusted');
+      setCliState('untrusted');
       if (explicit) {
         void vscode.window.showWarningMessage(problem.message, 'Manage Workspace Trust').then((c) => {
           if (c) {
@@ -55,7 +74,7 @@ export function activate(context: vscode.ExtensionContext): NephilexApi {
       }
       return;
     }
-    status.setCliState('missing');
+    setCliState('missing');
     if (explicit || !missingShown) {
       missingShown = true;
       void showInstallHelp(problem.message);
@@ -66,12 +85,30 @@ export function activate(context: vscode.ExtensionContext): NephilexApi {
   // Always registered where supported; the provider returns nothing while nephilex.mcp.enabled is off.
   const mcp = registerMcpProvider(cli, log);
 
+  /** Probe the CLI quietly (trusted workspaces only) so the view can say whether it is installed. */
+  const probeCli = (): void => {
+    if (!vscode.workspace.isTrusted) {
+      return;
+    }
+    void cli.prepare(readSettings()).then((p) => {
+      if (p.ok) {
+        setCliState('ready');
+      } else if (p.reason !== 'untrusted') {
+        setCliState('missing');
+      }
+    });
+  };
+
   const refreshCliState = (): void => {
     cli.invalidate();
-    status.setCliState(vscode.workspace.isTrusted ? 'unknown' : 'untrusted');
+    setCliState(vscode.workspace.isTrusted ? 'unknown' : 'untrusted');
     mcp?.refresh();
+    if (view.visible) {
+      probeCli();
+    }
   };
   refreshCliState();
+  void vscode.commands.executeCommand('setContext', ContextKeys.scanned, false);
 
   const shouldAutoScan = (doc: vscode.TextDocument): boolean =>
     vscode.workspace.isTrusted && doc.uri.scheme === 'file' && readSettings().run !== 'off';
@@ -80,15 +117,22 @@ export function activate(context: vscode.ExtensionContext): NephilexApi {
     log,
     store,
     status,
+    view,
     scanner,
     ...(mcp ? [mcp.disposable] : []),
     store.onDidChange(() => status.update()),
     scanner.onDidChangeBusy((busy) => {
       if (!busy && vscode.workspace.isTrusted) {
         // A completed run means the CLI resolved, unless a problem was reported.
-        void cli.prepare(readSettings()).then((p) => status.setCliState(p.ok ? 'ready' : 'missing'));
+        void cli.prepare(readSettings()).then((p) => setCliState(p.ok ? 'ready' : 'missing'));
       }
       status.setBusy(busy);
+    }),
+    scanner.onDidScan(() => void vscode.commands.executeCommand('setContext', ContextKeys.scanned, true)),
+    view.onDidChangeVisibility((e) => {
+      if (e.visible) {
+        probeCli();
+      }
     }),
 
     vscode.languages.registerHoverProvider(FILE_SELECTOR, new NephilexHoverProvider(store)),
@@ -97,22 +141,50 @@ export function activate(context: vscode.ExtensionContext): NephilexApi {
     }),
 
     vscode.commands.registerCommand(Commands.scanWorkspace, () => scanner.scanWorkspace()),
-    vscode.commands.registerCommand(Commands.scanFile, async () => {
-      const doc = vscode.window.activeTextEditor?.document;
+    vscode.commands.registerCommand(Commands.scanFile, async (arg: unknown) => {
+      // From the editor title the active editor's URI is passed; from the palette, nothing.
+      const uri = arg instanceof vscode.Uri ? arg : undefined;
+      const doc =
+        uri && uri.toString() !== vscode.window.activeTextEditor?.document.uri.toString()
+          ? await vscode.workspace.openTextDocument(uri).then(undefined, () => undefined)
+          : vscode.window.activeTextEditor?.document;
       if (!doc) {
         void vscode.window.showInformationMessage('Open a file to scan it with Nephilex.');
         return;
       }
       await scanner.scanDocument(doc, true);
     }),
+    vscode.commands.registerCommand(Commands.scanResource, async (clicked: unknown, selected: unknown) => {
+      // Explorer passes the clicked item and, with multi-select, every selected item.
+      const uris = asUris(selected).length ? asUris(selected) : asUris(clicked);
+      if (uris.length === 0) {
+        await scanner.scanWorkspace();
+        return;
+      }
+      await scanner.scanResources(uris);
+    }),
+    vscode.commands.registerCommand(Commands.refresh, () => scanner.rescan()),
     vscode.commands.registerCommand(Commands.clearFindings, () => store.clear()),
     vscode.commands.registerCommand(Commands.showProblems, () => showProblems()),
+    vscode.commands.registerCommand(Commands.showFindings, () =>
+      vscode.commands.executeCommand(`${FINDINGS_VIEW}.focus`),
+    ),
     vscode.commands.registerCommand(Commands.showLog, () => log.show(true)),
     vscode.commands.registerCommand(Commands.ignoreFinding, (args: unknown) => ignoreFinding(store, args)),
+    vscode.commands.registerCommand(Commands.installCli, () => installCli(installDeps)),
+    vscode.commands.registerCommand(Commands.openHtmlReport, () => openHtmlReport(cli, scanner, log)),
+    vscode.commands.registerCommand(Commands.filterFindings, () => view.pickFilter()),
+    vscode.commands.registerCommand(Commands.resetFilter, () => view.setFilter({ minSeverity: 'info', grade: 'all' })),
+    vscode.commands.registerCommand(Commands.groupBySeverity, () => view.setGroupBy('severity')),
+    vscode.commands.registerCommand(Commands.groupByFile, () => view.setGroupBy('file')),
+    vscode.commands.registerCommand(Commands.openFinding, (node: unknown) => openFinding(node)),
+    vscode.commands.registerCommand(Commands.ignoreFromView, (node: unknown) => ignoreFromView(store, node)),
+    vscode.commands.registerCommand(Commands.copyRuleId, (node: unknown) => copyRuleId(node)),
+    vscode.commands.registerCommand(Commands.openRuleDocs, (node: unknown) => openRuleDocs(node)),
     vscode.commands.registerCommand(Commands.installHelp, async () => {
       const prep = await cli.prepare(readSettings());
       if (prep.ok) {
-        status.setCliState('ready');
+        setCliState('ready');
         void vscode.window.showInformationMessage(
           `Nephilex ${prep.cli.caps.version} found at ${prep.cli.resolved.command}.`,
         );

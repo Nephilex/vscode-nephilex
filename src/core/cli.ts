@@ -76,6 +76,10 @@ export interface ScanArgsInput {
   configPath?: string;
   /** Options supported by the chosen subcommand (from its --help). Empty means unknown. */
   supported: ReadonlySet<string>;
+  /** Report format; html needs `output` and the scan command. Defaults to json on stdout. */
+  format?: 'json' | 'html';
+  /** Absolute path the CLI writes the report to (-o). */
+  output?: string;
 }
 
 /**
@@ -87,7 +91,14 @@ export interface ScanArgsInput {
 export function buildScanArgs(input: ScanArgsInput): string[] {
   const has = (opt: string): boolean => input.supported.size === 0 || input.supported.has(opt);
   const args: string[] = [input.command];
-  args.push(input.command === 'check' ? '--format' : '-f', 'json');
+  const format = input.format ?? 'json';
+  if (format === 'html' && (input.command !== 'scan' || !input.output)) {
+    throw new Error('An HTML report needs the scan command and an output file.');
+  }
+  args.push(input.command === 'check' ? '--format' : '-f', format);
+  if (input.output) {
+    args.push('-o', input.output);
+  }
   if (has('--quiet')) {
     args.push('--quiet');
   }

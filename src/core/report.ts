@@ -7,6 +7,7 @@
  * is treated as untrusted data: values are type checked, length capped, and
  * never interpreted as markup or commands by the extension.
  */
+import { NephilexEvidence, parseEvidence } from './evidence';
 
 export const SEVERITY_NAMES = ['info', 'low', 'medium', 'high', 'critical'] as const;
 export type SeverityName = (typeof SEVERITY_NAMES)[number];
@@ -48,6 +49,8 @@ export interface NephilexFinding {
   docsUrl?: string;
   /** `metadata.patch_source`: "deterministic" or "ai-proposed" when a patch exists. */
   patchSource?: string;
+  /** Grade, data-flow path, and verification steps (CLI 0.12.0 and later; absent before). */
+  evidence?: NephilexEvidence;
 }
 
 export interface NephilexReport {
@@ -185,6 +188,7 @@ export function parseFinding(v: unknown): NephilexFinding | undefined {
     remediation: parseRemediation(v['remediation']),
     docsUrl: optStr(v['docs_url'], 2048),
     patchSource: optStr(metadata['patch_source'], 64),
+    evidence: parseEvidence(v['evidence']),
   };
 }
 

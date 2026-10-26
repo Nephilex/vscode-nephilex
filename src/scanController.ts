@@ -4,17 +4,33 @@ import * as path from 'node:path';
 import * as vscode from 'vscode';
 import { NephilexCli, PrepareResult, PreparedCli } from './nephilexCli';
 import { buildScanArgs, sanitizeExtraArgs } from './core/cli';
+import { resolveStepPath, StepPathContext } from './core/evidence';
 import { isInside, resolveFindingPath, samePath, severityAtLeast } from './core/mapping';
 import { RunError } from './core/process';
 import { NephilexFinding, NephilexReport, parseReport, ReportParseError } from './core/report';
-import { documentLines, FindingStore, StoredFinding, textLines, toDiagnostic } from './findingStore';
+import { documentLines, FindingStore, StepResolver, StoredFinding, textLines, toDiagnostic } from './findingStore';
 import { NephilexSettings, readSettings } from './settings';
 
 export type CliProblem = Extract<PrepareResult, { ok: false }>;
 
+/** What was scanned last, so Refresh can run it again. */
+export type ScanTarget =
+  { kind: 'workspace' } | { kind: 'folder'; uri: vscode.Uri } | { kind: 'file'; uri: vscode.Uri };
+
+/** A directory handed to `nephilex scan`. */
+export interface FolderTarget {
+  /** File system path as the editor uses it. */
+  path: string;
+  name: string;
+  /** A `.nephilex.yml` to pass with --config (for a folder below a workspace root). */
+  configPath?: string;
+}
+
 /** Files larger than this are not scanned on save or on type. */
 const MAX_DOCUMENT_BYTES = 5 * 1024 * 1024;
 const CONFIG_FILES = ['.nephilex.yml', '.nephilex.yaml'];
+/** Explorer selections larger than this are cut, so one click cannot queue hundreds of scans. */
+const MAX_RESOURCES = 50;
 
 async function exists(p: string): Promise<boolean> {
   try {
@@ -61,6 +77,20 @@ async function reportRoot(report: NephilexReport, fallback: string): Promise<str
   }
 }
 
+/**
+ * A folder scan target for `uri`. A folder below a workspace root gets the
+ * root's `.nephilex.yml`, which the CLI would not find on its own.
+ */
+export async function folderTarget(uri: vscode.Uri): Promise<FolderTarget> {
+  const root = vscode.workspace.getWorkspaceFolder(uri);
+  const below = root !== undefined && !samePath(root.uri.fsPath, uri.fsPath);
+  return {
+    path: uri.fsPath,
+    name: below ? path.basename(uri.fsPath) : (root?.name ?? path.basename(uri.fsPath)),
+    configPath: below ? await findConfig(root.uri.fsPath) : undefined,
+  };
+}
+
 export class ScanController implements vscode.Disposable {
   private readonly inFlight = new Map<string, AbortController>();
   private readonly timers = new Map<string, ReturnType<typeof setTimeout>>();
@@ -68,6 +98,10 @@ export class ScanController implements vscode.Disposable {
   private busy = 0;
   private readonly busyChanged = new vscode.EventEmitter<boolean>();
   readonly onDidChangeBusy = this.busyChanged.event;
+  private readonly scanned = new vscode.EventEmitter<ScanTarget>();
+  /** Fires after a scan produced a report, with or without findings. */
+  readonly onDidScan = this.scanned.event;
+  private last?: ScanTarget;
 
   constructor(
     private readonly cli: NephilexCli,
@@ -78,6 +112,11 @@ export class ScanController implements vscode.Disposable {
 
   get isBusy(): boolean {
     return this.busy > 0;
+  }
+
+  /** The last scan the user asked for (not automatic ones), if any. */
+  get lastTarget(): ScanTarget | undefined {
+    return this.last;
   }
 
   private setBusy(delta: number): void {
@@ -115,7 +154,8 @@ export class ScanController implements vscode.Disposable {
     this.inFlight.delete(key);
   }
 
-  private async prepare(settings: NephilexSettings, explicit: boolean): Promise<PreparedCli | undefined> {
+  /** Resolve and probe the CLI; reports a problem (missing CLI, Restricted Mode) and returns undefined. */
+  async prepare(settings: NephilexSettings, explicit: boolean): Promise<PreparedCli | undefined> {
     const prep = await this.cli.prepare(settings);
     if (!prep.ok) {
       this.onCliProblem(prep, explicit);
@@ -126,6 +166,71 @@ export class ScanController implements vscode.Disposable {
       this.log.warn(`Ignoring managed flags in nephilex.extraArgs: ${dropped.join(' ')}`);
     }
     return prep.cli;
+  }
+
+  /** Run the last scan the user asked for again; without one, scan the workspace. */
+  async rescan(): Promise<void> {
+    const t = this.last;
+    if (t?.kind === 'file') {
+      let doc: vscode.TextDocument;
+      try {
+        doc = await vscode.workspace.openTextDocument(t.uri);
+      } catch {
+        void vscode.window.showWarningMessage('The file scanned last can no longer be opened.');
+        return;
+      }
+      await this.scanDocument(doc, true);
+    } else if (t?.kind === 'folder') {
+      await this.scanResources([t.uri]);
+    } else {
+      await this.scanWorkspace();
+    }
+  }
+
+  /**
+   * Scan files and folders picked in the Explorer. A folder gets a
+   * workspace-style scan of that folder; a file is scanned like the current
+   * file.
+   */
+  async scanResources(uris: readonly vscode.Uri[]): Promise<void> {
+    const folders: FolderTarget[] = [];
+    const files: vscode.Uri[] = [];
+    for (const uri of uris.slice(0, MAX_RESOURCES)) {
+      if (uri.scheme !== 'file') {
+        continue;
+      }
+      try {
+        const st = await fs.stat(uri.fsPath);
+        if (st.isDirectory()) {
+          folders.push(await folderTarget(uri));
+        } else if (st.isFile()) {
+          files.push(uri);
+        }
+      } catch {
+        // Deleted since it was picked: nothing to scan.
+      }
+    }
+    if (folders.length === 0 && files.length === 0) {
+      void vscode.window.showInformationMessage('Nephilex can only scan files and folders on disk.');
+      return;
+    }
+    if (folders.length) {
+      const only = folders.length === 1 && files.length === 0 ? folders[0] : undefined;
+      if (only) {
+        this.last = { kind: 'folder', uri: vscode.Uri.file(only.path) };
+      }
+      await this.scanFolders(folders);
+    }
+    for (const uri of files) {
+      let doc: vscode.TextDocument;
+      try {
+        doc = await vscode.workspace.openTextDocument(uri);
+      } catch {
+        void vscode.window.showWarningMessage(`Nephilex cannot open ${path.basename(uri.fsPath)} as text.`);
+        continue;
+      }
+      await this.scanDocument(doc, true);
+    }
   }
 
   /**
@@ -145,9 +250,17 @@ export class ScanController implements vscode.Disposable {
     const text = doc.getText();
     if (Buffer.byteLength(text, 'utf8') > MAX_DOCUMENT_BYTES) {
       this.log.info(`Skipping ${doc.uri.fsPath}: larger than ${MAX_DOCUMENT_BYTES / (1024 * 1024)} MB.`);
+      if (explicit) {
+        void vscode.window.showInformationMessage(
+          `Nephilex skipped ${path.basename(doc.uri.fsPath)}: it is larger than ${MAX_DOCUMENT_BYTES / (1024 * 1024)} MB.`,
+        );
+      }
       return;
     }
     const settings = readSettings();
+    if (explicit) {
+      this.last = { kind: 'file', uri: doc.uri };
+    }
     const cli = await this.prepare(settings, explicit);
     if (!cli) {
       return;
@@ -197,7 +310,24 @@ export class ScanController implements vscode.Disposable {
       if (abort.signal.aborted || doc.isClosed) {
         return;
       }
-      this.store.set(doc.uri, shown, documentLines(doc));
+      // Evidence steps may point at other files of the workspace folder, but
+      // only when the file was scanned in place: a temporary copy has no
+      // neighbours worth linking.
+      const realFolder = !useTemp && folder?.uri.scheme === 'file' ? await canonical(folder.uri.fsPath) : undefined;
+      const stepCtx: StepPathContext = {
+        roots: [root, realCwd],
+        file: { real: realTarget, local: doc.uri.fsPath },
+        folder: realFolder && folder ? { real: realFolder, local: folder.uri.fsPath } : undefined,
+      };
+      const resolveStep: StepResolver = (p) => {
+        const local = resolveStepPath(p, stepCtx);
+        if (!local) {
+          return undefined;
+        }
+        return samePath(local, doc.uri.fsPath) ? doc.uri : vscode.Uri.file(local);
+      };
+      this.store.set(doc.uri, shown, documentLines(doc), resolveStep);
+      this.scanned.fire({ kind: 'file', uri: doc.uri });
       this.log.info(`Scanned ${doc.uri.fsPath}: ${shown.length} finding(s) in ${result.durationMs} ms.`);
       if (explicit) {
         void vscode.window.setStatusBarMessage(
@@ -224,6 +354,12 @@ export class ScanController implements vscode.Disposable {
       void vscode.window.showInformationMessage('Open a folder to scan it with Nephilex.');
       return;
     }
+    this.last = { kind: 'workspace' };
+    await this.scanFolders(folders.map((f) => ({ path: f.uri.fsPath, name: f.name })));
+  }
+
+  /** Scan each folder with `nephilex scan` and replace the findings stored under it. */
+  private async scanFolders(folders: readonly FolderTarget[]): Promise<void> {
     const settings = readSettings();
     const cli = await this.prepare(settings, true);
     if (!cli) {
@@ -245,11 +381,12 @@ export class ScanController implements vscode.Disposable {
               break;
             }
             progress.report({ message: `Scanning ${folder.name}...` });
-            const results = await this.scanFolder(cli, settings, folder.uri.fsPath, abort.signal);
+            const results = await this.scanFolder(cli, settings, folder, abort.signal);
             if (results === undefined) {
               continue;
             }
-            this.store.replaceFolder(folder.uri.fsPath, results);
+            this.store.replaceFolder(folder.path, results);
+            this.scanned.fire({ kind: 'folder', uri: vscode.Uri.file(folder.path) });
             for (const e of results.values()) {
               total += e.items.length;
               high += e.items.filter((i) => i.finding.severity >= 3).length;
@@ -271,9 +408,10 @@ export class ScanController implements vscode.Disposable {
   private async scanFolder(
     cli: PreparedCli,
     settings: NephilexSettings,
-    folder: string,
+    target: FolderTarget,
     signal: AbortSignal,
   ): Promise<Map<string, { uri: vscode.Uri; items: StoredFinding[] }> | undefined> {
+    const folder = target.path;
     const args = buildScanArgs({
       command: 'scan',
       targets: [folder],
@@ -281,6 +419,7 @@ export class ScanController implements vscode.Disposable {
       scanners: settings.scanners,
       offlineEnrichment: settings.offlineEnrichment,
       extraArgs: settings.extraArgs,
+      configPath: target.configPath,
       supported: cli.caps.scanOptions,
     });
     let report: NephilexReport;
@@ -317,13 +456,18 @@ export class ScanController implements vscode.Disposable {
       list.push(f);
       grouped.set(local, list);
     }
+    const stepCtx: StepPathContext = { roots: [root], folder: { real: realFolder, local: folder } };
+    const resolveStep: StepResolver = (p) => {
+      const local = resolveStepPath(p, stepCtx);
+      return local ? vscode.Uri.file(local) : undefined;
+    };
     const results = new Map<string, { uri: vscode.Uri; items: StoredFinding[] }>();
     for (const [abs, findings] of grouped) {
       const uri = vscode.Uri.file(abs);
       const lines = await this.linesFor(uri);
       results.set(uri.toString(), {
         uri,
-        items: findings.map((finding) => ({ finding, diagnostic: toDiagnostic(finding, lines) })),
+        items: findings.map((finding) => ({ finding, diagnostic: toDiagnostic(finding, lines, uri, resolveStep) })),
       });
     }
     this.log.info(`Scanned ${folder}: ${report.findings.length} finding(s) in ${durationMs} ms.`);
@@ -397,5 +541,6 @@ export class ScanController implements vscode.Disposable {
     }
     this.workspaceScan?.abort();
     this.busyChanged.dispose();
+    this.scanned.dispose();
   }
 }

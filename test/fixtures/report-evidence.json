@@ -1,0 +1,735 @@
+{
+  "target": "/work/sample",
+  "started_at": "2026-10-26T11:25:56.813917Z",
+  "finished_at": "2026-10-26T11:25:57.341106Z",
+  "nephilex_version": "0.12.0.dev0",
+  "scanners_run": [
+    "agent-config",
+    "patterns",
+    "ast-python",
+    "ast-python-xfile",
+    "authz",
+    "business-logic",
+    "secrets",
+    "container-image",
+    "dast",
+    "malware"
+  ],
+  "scanners_failed": [],
+  "findings": [
+    {
+      "id": "secrets:aws-access-key-id:1",
+      "rule_id": "secrets.aws-access-key-id",
+      "scanner": "secrets",
+      "title": "Hardcoded credential: aws access key id",
+      "description": "A value matching the `aws-access-key-id` pattern was found committed in source. Secrets in version control are exposed to everyone with repository access and remain in history even after removal.",
+      "location": {
+        "path": "app.py",
+        "start_line": 2,
+        "end_line": 2,
+        "start_column": 12,
+        "end_column": 32,
+        "snippet": "AWS_KEY = \"AKI\u2026 [redacted, 20 chars]\""
+      },
+      "severity": 4,
+      "confidence": 2,
+      "likelihood": 3,
+      "cwe": ["CWE-798"],
+      "owasp": ["A07:2021-Identification and Authentication Failures"],
+      "why_vulnerable": "A credential is committed in source, so anyone with repository access (or a leaked copy) obtains it.",
+      "attacker_perspective": "Read the value straight from version control history and use it directly against the corresponding service.",
+      "business_impact": "Unauthorized access to the associated account or service, and any data or spend it controls.",
+      "remediation": {
+        "summary": "Remove the secret from source and rotate it.",
+        "guidance": "1. Revoke/rotate the exposed credential now, assume it is compromised.\n2. Move the value to a secret manager or an environment variable loaded at runtime.\n3. Purge it from git history (e.g. git-filter-repo) so it is not recoverable.\n4. Add a pre-commit secret scan to prevent recurrence.",
+        "patch": null,
+        "references": [
+          "https://cwe.mitre.org/data/definitions/798.html",
+          "https://owasp.org/Top10/A07_2021-Identification_and_Authentication_Failures/"
+        ],
+        "verified": false
+      },
+      "exploit": null,
+      "tags": ["secret", "aws-access-key-id"],
+      "metadata": {
+        "verification": "likely",
+        "contextual_risk": 100.0,
+        "risk_factors": {
+          "base": 97.0,
+          "internet_exposed": false,
+          "production": false,
+          "boost": 10.0
+        }
+      },
+      "detected_at": "2026-10-26T11:25:57.250828Z",
+      "evidence": {
+        "grade": "likely",
+        "basis": "The value matches a provider's exact key format; it was not checked with the provider.",
+        "path": [
+          {
+            "path": "app.py",
+            "line": 2,
+            "column": 12,
+            "role": "sink",
+            "code": "AWS_KEY = \"AKI\u2026 [redacted, 20 chars]\"",
+            "note": "matched by secrets.aws-access-key-id"
+          }
+        ],
+        "verify": [
+          "Open app.py line 2 and read the flagged code.",
+          "Check whether the value is a real credential or a placeholder, sample or test value.",
+          "If it is real, rotate it with the provider and remove it from the repository history.",
+          "Confirm the reason given applies here: A credential is committed in source, so anyone with repository access (or a leaked copy) obtains it."
+        ]
+      },
+      "docs_url": "https://nephilex.github.io/nephilex/scanners/#secrets"
+    },
+    {
+      "id": "ast-python:ast-sql-injection:web.py:13",
+      "rule_id": "ast-python.ast-sql-injection",
+      "scanner": "ast-python",
+      "title": "SQL injection (tainted value reaches a database query)",
+      "description": "A value derived from untrusted input flows into a database query without parameterization, so input can change the query's structure.",
+      "location": {
+        "path": "web.py",
+        "start_line": 13,
+        "end_line": 13,
+        "start_column": 5,
+        "end_column": 23,
+        "snippet": "    cur.execute(query)"
+      },
+      "severity": 3,
+      "confidence": 2,
+      "likelihood": 3,
+      "cwe": ["CWE-89"],
+      "owasp": ["A03:2021-Injection"],
+      "why_vulnerable": "A value derived from untrusted input flows into a database query without parameterization, so input can change the query's structure.",
+      "attacker_perspective": "Supply `' OR '1'='1` (or a UNION/stacked query) in the tainted parameter to read or modify unintended rows.",
+      "business_impact": "Unauthorized data access or modification, up to full database compromise.",
+      "remediation": {
+        "summary": "Use parameterized queries / bound parameters and never build SQL from input, even across intermediate variables.",
+        "guidance": "Use parameterized queries / bound parameters and never build SQL from input, even across intermediate variables.",
+        "patch": null,
+        "references": ["https://cwe.mitre.org/data/definitions/89.html"],
+        "verified": false
+      },
+      "exploit": null,
+      "tags": ["sast", "ast", "taint"],
+      "metadata": {
+        "analysis": "taint-dataflow",
+        "verification": "likely",
+        "contextual_risk": 82.8,
+        "risk_factors": {
+          "base": 72.8,
+          "internet_exposed": false,
+          "production": false,
+          "boost": 10.0
+        }
+      },
+      "detected_at": "2026-10-26T11:25:57.266632Z",
+      "evidence": {
+        "grade": "likely",
+        "basis": "Request data reaches the SQL call with no recognized sanitizer on the path.",
+        "path": [
+          {
+            "path": "web.py",
+            "line": 9,
+            "column": 11,
+            "role": "source",
+            "code": "uid = request.args.get(\"id\")",
+            "note": "request.args.get(\"id\") is attacker-controlled"
+          },
+          {
+            "path": "web.py",
+            "line": 9,
+            "column": 5,
+            "role": "step",
+            "code": "uid = request.args.get(\"id\")",
+            "note": "assigned to uid"
+          },
+          {
+            "path": "web.py",
+            "line": 10,
+            "column": 5,
+            "role": "step",
+            "code": "query = \"SELECT * FROM users WHERE id = '\" + uid + \"'\"",
+            "note": "assigned to query"
+          },
+          {
+            "path": "web.py",
+            "line": 13,
+            "column": 5,
+            "role": "sink",
+            "code": "cur.execute(query)",
+            "note": "passed to cur.execute"
+          }
+        ],
+        "verify": [
+          "Open web.py line 9 and confirm the value read there comes from the request.",
+          "Follow it through lines 9 and 10 and check that nothing validates, escapes or converts it before web.py line 13.",
+          "Check whether any caller, decorator or middleware validates the value before web.py line 13.",
+          "In a test environment you own, pass a value containing a single quote (for example ' OR '1'='1) and check whether the query fails or returns other rows."
+        ]
+      },
+      "docs_url": "https://nephilex.github.io/nephilex/scanners/#taint-data-flow-ast"
+    },
+    {
+      "id": "chains:secret-plus-injection:app.py",
+      "rule_id": "chains.secret-plus-injection",
+      "scanner": "chains",
+      "title": "Attack chain: injection foothold beside an exposed credential",
+      "description": "This component contains both a hardcoded credential and an injection vulnerability. An attacker exploiting the injection gains code or query execution in the very component that holds the secret, so a single foothold yields both execution and a credential for lateral movement.\n\nChained findings: secrets.aws-access-key-id (app.py:2); patterns.python-shell-true (app.py:4)",
+      "location": {
+        "path": "app.py",
+        "start_line": 2,
+        "end_line": null,
+        "start_column": null,
+        "end_column": null,
+        "snippet": null
+      },
+      "severity": 3,
+      "confidence": 1,
+      "likelihood": 3,
+      "cwe": ["CWE-78", "CWE-798"],
+      "owasp": ["A03:2021-Injection", "A07:2021-Identification and Authentication Failures"],
+      "why_vulnerable": "This component contains both a hardcoded credential and an injection vulnerability. An attacker exploiting the injection gains code or query execution in the very component that holds the secret, so a single foothold yields both execution and a credential for lateral movement.",
+      "attacker_perspective": "Individually these findings look moderate; chained, each one enables the next, so an attacker can walk the entire path from untrusted input to impact.",
+      "business_impact": "Compounded impact: the chain reaches a materially worse outcome than any single finding in it.",
+      "remediation": {
+        "summary": "Break the chain: fixing any one link stops this path, fix all for defense in depth.",
+        "guidance": "Breaking the weakest link is enough to stop this specific path, but address every chained finding so a variant cannot re-open it.",
+        "patch": null,
+        "references": [],
+        "verified": false
+      },
+      "exploit": null,
+      "tags": ["attack-chain", "secret-plus-injection"],
+      "metadata": {
+        "chain_members": ["secrets.aws-access-key-id", "patterns.python-shell-true"],
+        "verification": "likely",
+        "contextual_risk": 96.5,
+        "risk_factors": {
+          "base": 66.5,
+          "internet_exposed": false,
+          "production": false,
+          "boost": 30.0
+        }
+      },
+      "detected_at": "2026-10-26T11:25:57.283659Z",
+      "evidence": {
+        "grade": "possible",
+        "basis": "A pattern or heuristic match; the tool did not show that attacker-controlled data reaches this code.",
+        "path": [
+          {
+            "path": "app.py",
+            "line": 2,
+            "column": null,
+            "role": "sink",
+            "code": "",
+            "note": "matched by chains.secret-plus-injection"
+          }
+        ],
+        "verify": [
+          "Open app.py line 2 and read the flagged code.",
+          "Check where the values used on that line come from; it is a risk only if an attacker can influence them.",
+          "In a test environment you own, pass a value that adds a harmless second command after a semicolon and check whether it runs.",
+          "Confirm the reason given applies here: This component contains both a hardcoded credential and an injection vulnerability. An attacker exploiting the injection gains code or query execution in the very component that holds the secret, s..."
+        ]
+      },
+      "docs_url": "https://nephilex.github.io/nephilex/scanners/"
+    },
+    {
+      "id": "patterns:python-yaml-load:4",
+      "rule_id": "patterns.python-yaml-load",
+      "scanner": "patterns",
+      "title": "Unsafe yaml.load without SafeLoader",
+      "description": "yaml.load with the default loader can construct arbitrary Python objects from the document.",
+      "location": {
+        "path": "app.py",
+        "start_line": 11,
+        "end_line": 11,
+        "start_column": 12,
+        "end_column": 22,
+        "snippet": "    return yaml.load(s)"
+      },
+      "severity": 3,
+      "confidence": 1,
+      "likelihood": 2,
+      "cwe": ["CWE-502"],
+      "owasp": ["A08:2021-Software and Data Integrity Failures"],
+      "why_vulnerable": "yaml.load with the default loader can construct arbitrary Python objects from the document.",
+      "attacker_perspective": "Feed a YAML payload using `!!python/object/apply` tags to execute code.",
+      "business_impact": "Remote code execution.",
+      "remediation": {
+        "summary": "Use yaml.safe_load, or yaml.load(..., Loader=yaml.SafeLoader).",
+        "guidance": "Use yaml.safe_load, or yaml.load(..., Loader=yaml.SafeLoader).",
+        "patch": "--- a/app.py\n+++ b/app.py\n@@ -11 +11 @@\n-    return yaml.load(s)\n+    return yaml.safe_load(s)\n",
+        "references": ["https://cwe.mitre.org/data/definitions/502.html"],
+        "verified": true
+      },
+      "exploit": null,
+      "tags": ["sast"],
+      "metadata": {
+        "dataflow": "unknown",
+        "patch_source": "deterministic",
+        "verification": "likely",
+        "contextual_risk": 74.2,
+        "risk_factors": {
+          "base": 64.2,
+          "internet_exposed": false,
+          "production": false,
+          "boost": 10.0
+        }
+      },
+      "detected_at": "2026-10-26T11:25:57.266632Z",
+      "evidence": {
+        "grade": "possible",
+        "basis": "A pattern or heuristic match; the tool did not show that attacker-controlled data reaches this code.",
+        "path": [
+          {
+            "path": "app.py",
+            "line": 11,
+            "column": 12,
+            "role": "sink",
+            "code": "return yaml.load(s)",
+            "note": "matched by patterns.python-yaml-load"
+          }
+        ],
+        "verify": [
+          "Open app.py line 11 and read the flagged code.",
+          "Check where the values used on that line come from; it is a risk only if an attacker can influence them.",
+          "Check whether the serialized data can come from outside; never load untrusted samples outside a sandbox.",
+          "Confirm the reason given applies here: yaml.load with the default loader can construct arbitrary Python objects from the document."
+        ]
+      },
+      "docs_url": "https://nephilex.github.io/nephilex/scanners/#sast-pattern-rules"
+    },
+    {
+      "id": "patterns:python-shell-true:1",
+      "rule_id": "patterns.python-shell-true",
+      "scanner": "patterns",
+      "title": "Command execution with shell=True",
+      "description": "Running a subprocess through the shell lets shell metacharacters in any interpolated input execute additional commands.",
+      "location": {
+        "path": "app.py",
+        "start_line": 4,
+        "end_line": 4,
+        "start_column": 5,
+        "end_column": 35,
+        "snippet": "    subprocess.run(cmd, shell=True)"
+      },
+      "severity": 3,
+      "confidence": 1,
+      "likelihood": 2,
+      "cwe": ["CWE-78"],
+      "owasp": ["A03:2021-Injection"],
+      "why_vulnerable": "Running a subprocess through the shell lets shell metacharacters in any interpolated input execute additional commands.",
+      "attacker_perspective": "Provide input containing `; rm -rf /` or `$(...)` to run arbitrary commands as the app user.",
+      "business_impact": "Remote code execution on the host.",
+      "remediation": {
+        "summary": "Pass the command as an argument list without shell=True, and validate/escape any external input.",
+        "guidance": "Pass the command as an argument list without shell=True, and validate/escape any external input.",
+        "patch": "--- a/app.py\n+++ b/app.py\n@@ -4 +4 @@\n-    subprocess.run(cmd, shell=True)\n+    subprocess.run(cmd, shell=False)\n",
+        "references": ["https://cwe.mitre.org/data/definitions/78.html"],
+        "verified": true
+      },
+      "exploit": null,
+      "tags": ["sast"],
+      "metadata": {
+        "dataflow": "unknown",
+        "patch_source": "deterministic",
+        "verification": "likely",
+        "contextual_risk": 74.2,
+        "risk_factors": {
+          "base": 64.2,
+          "internet_exposed": false,
+          "production": false,
+          "boost": 10.0
+        }
+      },
+      "detected_at": "2026-10-26T11:25:57.266632Z",
+      "evidence": {
+        "grade": "possible",
+        "basis": "A pattern or heuristic match; the tool did not show that attacker-controlled data reaches this code.",
+        "path": [
+          {
+            "path": "app.py",
+            "line": 4,
+            "column": 5,
+            "role": "sink",
+            "code": "subprocess.run(cmd, shell=True)",
+            "note": "matched by patterns.python-shell-true"
+          }
+        ],
+        "verify": [
+          "Open app.py line 4 and read the flagged code.",
+          "Check where the values used on that line come from; it is a risk only if an attacker can influence them.",
+          "In a test environment you own, pass a value that adds a harmless second command after a semicolon and check whether it runs.",
+          "Confirm the reason given applies here: Running a subprocess through the shell lets shell metacharacters in any interpolated input execute additional commands."
+        ]
+      },
+      "docs_url": "https://nephilex.github.io/nephilex/scanners/#sast-pattern-rules"
+    },
+    {
+      "id": "authz:missing-auth:1",
+      "rule_id": "authz.missing-authentication",
+      "scanner": "authz",
+      "title": "Sensitive route may lack authentication: /user",
+      "description": "Route `/user` matches sensitive path patterns and has no obvious auth decorator or Depends() in the surrounding code.",
+      "location": {
+        "path": "web.py",
+        "start_line": 7,
+        "end_line": null,
+        "start_column": null,
+        "end_column": null,
+        "snippet": "@app.route(\"/user\")"
+      },
+      "severity": 3,
+      "confidence": 1,
+      "likelihood": 2,
+      "cwe": ["CWE-306"],
+      "owasp": ["A01:2021-Broken Access Control"],
+      "why_vulnerable": "Administrative or sensitive endpoints without authentication allow unauthenticated access.",
+      "attacker_perspective": "Call the endpoint directly without credentials.",
+      "business_impact": "Unauthorized access to privileged functionality or data.",
+      "remediation": {
+        "summary": "Require authentication on sensitive routes.",
+        "guidance": "Add framework-native auth (Depends(get_current_user), @login_required, middleware) before handler logic.",
+        "patch": null,
+        "references": [],
+        "verified": false
+      },
+      "exploit": null,
+      "tags": ["auth", "authorization"],
+      "metadata": {
+        "route": "/user",
+        "verification": "likely",
+        "contextual_risk": 74.2,
+        "risk_factors": {
+          "base": 64.2,
+          "internet_exposed": false,
+          "production": false,
+          "boost": 10.0
+        }
+      },
+      "detected_at": "2026-10-26T11:25:57.241389Z",
+      "evidence": {
+        "grade": "possible",
+        "basis": "A pattern or heuristic match; the tool did not show that attacker-controlled data reaches this code.",
+        "path": [
+          {
+            "path": "web.py",
+            "line": 7,
+            "column": null,
+            "role": "sink",
+            "code": "@app.route(\"/user\")",
+            "note": "matched by authz.missing-authentication"
+          }
+        ],
+        "verify": [
+          "Open web.py line 7 and read the flagged code.",
+          "Check whether a decorator, middleware or router-level dependency enforces authentication and authorization for this route.",
+          "Confirm the reason given applies here: Administrative or sensitive endpoints without authentication allow unauthenticated access."
+        ]
+      },
+      "docs_url": "https://nephilex.github.io/nephilex/scanners/"
+    },
+    {
+      "id": "patterns:weak-hash-md5-sha1:2",
+      "rule_id": "patterns.weak-hash-md5-sha1",
+      "scanner": "patterns",
+      "title": "Weak hash algorithm (MD5/SHA1)",
+      "description": "MD5 and SHA-1 are broken for security purposes (collisions, speed) and must not be used for integrity or password hashing.",
+      "location": {
+        "path": "app.py",
+        "start_line": 6,
+        "end_line": 6,
+        "start_column": 12,
+        "end_column": 24,
+        "snippet": "    return hashlib.md5(x).hexdigest()"
+      },
+      "severity": 2,
+      "confidence": 1,
+      "likelihood": 2,
+      "cwe": ["CWE-327"],
+      "owasp": ["A02:2021-Cryptographic Failures"],
+      "why_vulnerable": "MD5 and SHA-1 are broken for security purposes (collisions, speed) and must not be used for integrity or password hashing.",
+      "attacker_perspective": "Exploit collision weaknesses, or brute-force fast hashes for stored passwords.",
+      "business_impact": "Forged signatures/integrity checks, or recovered passwords.",
+      "remediation": {
+        "summary": "Use SHA-256+ for integrity and a slow KDF (bcrypt/scrypt/Argon2) for passwords.",
+        "guidance": "Use SHA-256+ for integrity and a slow KDF (bcrypt/scrypt/Argon2) for passwords.",
+        "patch": "--- a/app.py\n+++ b/app.py\n@@ -6 +6 @@\n-    return hashlib.md5(x).hexdigest()\n+    return hashlib.sha256(x).hexdigest()\n",
+        "references": ["https://cwe.mitre.org/data/definitions/327.html"],
+        "verified": true
+      },
+      "exploit": null,
+      "tags": ["sast"],
+      "metadata": {
+        "patch_source": "deterministic",
+        "verification": "likely",
+        "contextual_risk": 42.8,
+        "risk_factors": {
+          "base": 42.8,
+          "internet_exposed": false,
+          "production": false,
+          "boost": 0.0
+        }
+      },
+      "detected_at": "2026-10-26T11:25:57.266632Z",
+      "evidence": {
+        "grade": "possible",
+        "basis": "A pattern or heuristic match; the tool did not show that attacker-controlled data reaches this code.",
+        "path": [
+          {
+            "path": "app.py",
+            "line": 6,
+            "column": 12,
+            "role": "sink",
+            "code": "return hashlib.md5(x).hexdigest()",
+            "note": "matched by patterns.weak-hash-md5-sha1"
+          }
+        ],
+        "verify": [
+          "Open app.py line 6 and read the flagged code.",
+          "Check where the values used on that line come from; it is a risk only if an attacker can influence them.",
+          "Confirm the reason given applies here: MD5 and SHA-1 are broken for security purposes (collisions, speed) and must not be used for integrity or password hashing."
+        ]
+      },
+      "docs_url": "https://nephilex.github.io/nephilex/scanners/#sast-pattern-rules"
+    },
+    {
+      "id": "ast-python:ast-sql-string-building:app.py:8",
+      "rule_id": "ast-python.ast-sql-string-building",
+      "scanner": "ast-python",
+      "title": "SQL query built by string formatting from a non-constant value",
+      "description": "The query passed to execute() is assembled with %, + , .format() or an f-string from a value that is not a constant. No untrusted source was traced to it in this file, but if the value can be influenced by a caller (a function parameter, a request elsewhere), the query structure can change.",
+      "location": {
+        "path": "app.py",
+        "start_line": 8,
+        "end_line": 8,
+        "start_column": 5,
+        "end_column": 57,
+        "snippet": "    cur.execute(\"SELECT * FROM users WHERE id = \" + uid)"
+      },
+      "severity": 2,
+      "confidence": 0,
+      "likelihood": 3,
+      "cwe": ["CWE-89"],
+      "owasp": ["A03:2021-Injection"],
+      "why_vulnerable": "The query passed to execute() is assembled with %, + , .format() or an f-string from a value that is not a constant. No untrusted source was traced to it in this file, but if the value can be influenced by a caller (a function parameter, a request elsewhere), the query structure can change.",
+      "attacker_perspective": "If any caller passes attacker-controlled text, inject SQL through it.",
+      "business_impact": "Unauthorized data access or modification if the value is attacker-controlled.",
+      "remediation": {
+        "summary": "Pass values as bound parameters (execute(sql, params)) instead of formatting them into the SQL text.",
+        "guidance": "Pass values as bound parameters (execute(sql, params)) instead of formatting them into the SQL text.",
+        "patch": null,
+        "references": ["https://cwe.mitre.org/data/definitions/89.html"],
+        "verified": false
+      },
+      "exploit": null,
+      "tags": ["sast", "ast", "taint"],
+      "metadata": {
+        "analysis": "taint-dataflow",
+        "verification": "detected",
+        "contextual_risk": 40.2,
+        "risk_factors": {
+          "base": 40.2,
+          "internet_exposed": false,
+          "production": false,
+          "boost": 0.0
+        }
+      },
+      "detected_at": "2026-10-26T11:25:57.262113Z",
+      "evidence": {
+        "grade": "possible",
+        "basis": "The rule is a low-confidence or heuristic match; read the code to decide.",
+        "path": [
+          {
+            "path": "app.py",
+            "line": 8,
+            "column": 5,
+            "role": "sink",
+            "code": "cur.execute(\"SELECT * FROM users WHERE id = \" + uid)",
+            "note": "matched by ast-python.ast-sql-string-building"
+          }
+        ],
+        "verify": [
+          "Open app.py line 8 and read the flagged code.",
+          "Check where the values used on that line come from; it is a risk only if an attacker can influence them.",
+          "In a test environment you own, pass a value containing a single quote (for example ' OR '1'='1) and check whether the query fails or returns other rows.",
+          "Confirm the reason given applies here: The query passed to execute() is assembled with %, + , .format() or an f-string from a value that is not a constant. No untrusted source was traced to it in this file, but if the value can be influ..."
+        ]
+      },
+      "docs_url": "https://nephilex.github.io/nephilex/scanners/#taint-data-flow-ast"
+    }
+  ],
+  "project_summary": {
+    "name": "sample",
+    "root": "/work/sample",
+    "origin": "local",
+    "origin_url": null,
+    "file_count": 2,
+    "languages": {
+      "Python": 2
+    },
+    "frameworks": ["Flask"],
+    "architecture": {
+      "apis": ["REST/HTTP"],
+      "auth": [],
+      "datastores": ["SQLite"],
+      "third_party": [],
+      "cloud": [],
+      "containers": [],
+      "ci_cd": [],
+      "dependency_manifests": [],
+      "iac": []
+    },
+    "library_mode": {
+      "setting": "auto",
+      "active": false,
+      "reason": "no package manifest (pyproject.toml, setup.py, setup.cfg)"
+    },
+    "security_graph": {
+      "nodes": [
+        {
+          "id": "internet",
+          "type": "trust_boundary",
+          "label": "Internet"
+        },
+        {
+          "id": "lang:Python",
+          "type": "language",
+          "label": "Python"
+        },
+        {
+          "id": "service:Flask",
+          "type": "service",
+          "label": "Flask"
+        },
+        {
+          "id": "finding:patterns.weak-hash-md5-sha1|app.py|f9a14f32ed7f",
+          "type": "finding",
+          "label": "patterns.weak-hash-md5-sha1",
+          "severity": "Medium"
+        },
+        {
+          "id": "finding:patterns.python-yaml-load|app.py|72d06d5eac61",
+          "type": "finding",
+          "label": "patterns.python-yaml-load",
+          "severity": "High"
+        },
+        {
+          "id": "finding:patterns.python-shell-true|app.py|4b7522ab40f4",
+          "type": "finding",
+          "label": "patterns.python-shell-true",
+          "severity": "High"
+        },
+        {
+          "id": "finding:secrets.aws-access-key-id|app.py|c8064ac52e3e",
+          "type": "finding",
+          "label": "secrets.aws-access-key-id",
+          "severity": "Critical"
+        },
+        {
+          "id": "finding:ast-python.ast-sql-string-building|app.py|fadcccf0a252",
+          "type": "finding",
+          "label": "ast-python.ast-sql-string-building",
+          "severity": "Medium"
+        },
+        {
+          "id": "finding:authz.missing-authentication|web.py|98f3a3a32ca7",
+          "type": "finding",
+          "label": "authz.missing-authentication",
+          "severity": "High"
+        },
+        {
+          "id": "finding:ast-python.ast-sql-injection|web.py|5bd7a675074b",
+          "type": "finding",
+          "label": "ast-python.ast-sql-injection",
+          "severity": "High"
+        },
+        {
+          "id": "finding:chains.secret-plus-injection|app.py|L2",
+          "type": "finding",
+          "label": "chains.secret-plus-injection",
+          "severity": "High"
+        }
+      ],
+      "edges": [
+        {
+          "from": "internet",
+          "to": "service:Flask",
+          "kind": "exposure"
+        },
+        {
+          "from": "app.py",
+          "to": "finding:patterns.weak-hash-md5-sha1|app.py|f9a14f32ed7f",
+          "kind": "affects"
+        },
+        {
+          "from": "app.py",
+          "to": "finding:patterns.python-yaml-load|app.py|72d06d5eac61",
+          "kind": "affects"
+        },
+        {
+          "from": "app.py",
+          "to": "finding:patterns.python-shell-true|app.py|4b7522ab40f4",
+          "kind": "affects"
+        },
+        {
+          "from": "app.py",
+          "to": "finding:secrets.aws-access-key-id|app.py|c8064ac52e3e",
+          "kind": "affects"
+        },
+        {
+          "from": "app.py",
+          "to": "finding:ast-python.ast-sql-string-building|app.py|fadcccf0a252",
+          "kind": "affects"
+        },
+        {
+          "from": "web.py",
+          "to": "finding:authz.missing-authentication|web.py|98f3a3a32ca7",
+          "kind": "affects"
+        },
+        {
+          "from": "web.py",
+          "to": "finding:ast-python.ast-sql-injection|web.py|5bd7a675074b",
+          "kind": "affects"
+        },
+        {
+          "from": "app.py",
+          "to": "finding:chains.secret-plus-injection|app.py|L2",
+          "kind": "affects"
+        },
+        {
+          "from": "internet",
+          "to": "finding:chains.secret-plus-injection|app.py|L2",
+          "kind": "attack_path"
+        }
+      ],
+      "trust_boundaries": ["internet", "application", "datastore", "cloud"],
+      "supply_chain": []
+    },
+    "metrics": {
+      "scanners_run": [
+        "agent-config",
+        "patterns",
+        "ast-python",
+        "ast-python-xfile",
+        "authz",
+        "business-logic",
+        "secrets",
+        "container-image",
+        "dast",
+        "malware"
+      ],
+      "findings_total": 8,
+      "duration_ms": 22,
+      "cache_hits": 0,
+      "errors": []
+    },
+    "disclaimer": "Nephilex identifies known security risks using static analysis, configuration review, and optional authorized checks. Results are evidence-based signals, not proof that a system is secure. Always validate findings in context and never treat a clean scan as a guarantee of safety."
+  },
+  "errors": []
+}
