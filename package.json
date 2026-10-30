@@ -4,6 +4,11 @@
   "description": "Open-source application security scanner for code, dependencies, secrets, infrastructure as code, and AI/LLM apps. Shows Nephilex findings with their evidence as diagnostics, hovers, a Findings view, and quick fixes.",
   "version": "0.2.0",
   "publisher": "nephilex",
+  "author": {
+    "name": "Haseeb Farooq",
+    "email": "haseebfarooq35@gmail.com",
+    "url": "https://fourdevs.ai"
+  },
   "license": "Apache-2.0",
   "icon": "images/icon.png",
   "galleryBanner": {

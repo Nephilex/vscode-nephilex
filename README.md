@@ -204,6 +204,14 @@ The settings section (`nephilex.*`), command ids, and the diagnostic source are 
 `src/constants.ts` and are independent of the extension name. When `name` or `publisher` changes,
 update `EXTENSION_ID` in `test/integration/suite/extension.test.ts`.
 
+## Support
+
+- Bugs and feature requests: open an issue on the [extension repository](https://github.com/nephilex/vscode-nephilex/issues).
+- Security reports: see `SECURITY.md` (do not open a public issue).
+- Other questions: email <haseebfarooq35@gmail.com>.
+
+Built by the team at [fourdevs.ai](https://fourdevs.ai).
+
 ## License
 
 Apache-2.0. See `LICENSE`.
